@@ -1,5 +1,5 @@
 {
-  "name": "@dscribe/auto-surf",
+  "name": "@dscribers/auto-surf",
   "version": "1.0.0",
   "description": "Automactically surf webpages from Gherkin config files",
   "main": "dist/index.js",

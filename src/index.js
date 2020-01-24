@@ -702,12 +702,16 @@ AutoSurf.prototype = {
     /**
      * Triggers the given event
      * @param {string} event
-     * @param {Object} obj The object to pass as parameter to the callback
+     * @param {Object} details The object to pass as parameter to the callback
      * @returns {AutoSurf}
      */
-    trigger: function (event, obj) {
+    trigger: function (event, details) {
         try {
-            this.events[event].call(this.schedules[this.currentSchedule], obj)
+            this.events[event].call({
+                event,
+                schedule: this.schedules[this.currentSchedule],
+                details
+            })
         } catch (e) {}
 
         return this
@@ -784,9 +788,16 @@ AutoSurf.prototype = {
      * @returns {AutoSurf}
      */
     on: function (event, callback) {
-        event.split(',').map(function (evt) {
-            this.events[evt.trim()] = callback
-        }.bind(this))
+        if (event === '*') {
+            ['paused', 'resumed', 'work.start', 'work.stop', 'schedule.start', 'schedule.finish', 'action.success', 'action.error', 'done']
+            .map(function (evt) {
+                this.events[evt] = callback
+            }.bind(this))
+        } else {
+            event.split(',').map(function (evt) {
+                this.events[evt.trim()] = callback
+            }.bind(this))
+        }
 
         return this
     },

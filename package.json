@@ -2,14 +2,31 @@
   "name": "@dscribers/auto-surf",
   "version": "1.0.0",
   "description": "Automactically surf webpages from Gherkin config files",
-  "main": "dist/index.js",
-  "module": "dist/index.es.js",
-  "browser": "dist/index.bundle.js",
+  "rollup": {
+    "autosurf": {
+      "main": "dist/autosurf.js",
+      "module": "dist/autosurf.es.js",
+      "browser": "dist/autosurf.min.js"
+    },
+    "surf": {
+      "main": "dist/surf.js",
+      "module": "dist/surf.es.js",
+      "browser": "dist/surf.min.js"
+    }
+  },
   "repository": "https://github.com/ezra-obiwale/auto-surf",
   "author": "Ezra Obiwale",
   "license": "MIT",
-  "dependencies": {
-    "rollup": "^1.29.1"
+  "main": "dist/autosurf.js",
+  "devDependencies": {
+    "@babel/core": "^7.8.3",
+    "@babel/preset-env": "^7.8.3",
+    "@rollup/plugin-commonjs": "^11.0.1",
+    "@rollup/plugin-multi-entry": "^3.0.0",
+    "@rollup/plugin-node-resolve": "^7.0.0",
+    "rollup": "^1.29.1",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-terser": "^5.2.0"
   },
   "scripts": {
     "build": "rollup -c",

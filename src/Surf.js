@@ -105,7 +105,7 @@ Surf.prototype = {
    */
   ready: function(func) {
     self = this
-    const readyList = []
+    let readyList = []
     let readyFired = false
     let readyEventHandlersInstalled = false
 

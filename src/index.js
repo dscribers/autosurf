@@ -665,7 +665,7 @@ AutoSurf.prototype = {
 
     return this
   },
-  parseObject: function(obj) {
+  parse: function(obj) {
     if (obj === undefined || typeof obj !== 'object') {
       console.error('Surf.parseObject() requires an object parameter')
       return this

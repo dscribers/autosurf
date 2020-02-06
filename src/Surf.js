@@ -4,14 +4,14 @@
  * @author Ezra Obiwale <contact@ezraobiwale.com>
  * @return {Surf}
  */
-const Surf = function(selector, useThisWindow, debug) {
+const Surf = function(selector) {
   if (selector instanceof Surf) {
     return selector
   } else if (!(this instanceof Surf)) {
-    return new Surf(selector, useThisWindow, debug)
+    return new Surf(selector)
   }
 
-  this.__init(selector, useThisWindow, debug)
+  this.__init(selector)
   this.version = '1.0'
 }
 
@@ -34,12 +34,8 @@ Surf.prototype = {
 
     return this
   },
-  __init: function(selector, userThisWindow) {
-    this.window = userThisWindow
-      ? window
-      : window.document.querySelector('iframe').contentWindow
+  __init: function(selector) {
     const elem = this.__elem(selector)
-    this.utw = userThisWindow || false
     return elem
   },
   __elem: function(selector) {
@@ -63,7 +59,7 @@ Surf.prototype = {
       this.length = selector.length || 1
     } else if (typeof selector === 'string') {
       this.selector = selector
-      this.item = this.window.document.querySelector(selector)
+      this.item = document.querySelector(selector)
       this.length = this.item ? 1 : 0
     }
 
@@ -79,7 +75,7 @@ Surf.prototype = {
     }
   },
   __create: function(selector) {
-    return new Surf(selector, this.utw)
+    return new Surf(selector)
   },
   __setContext: function(context) {
     this.context = context
@@ -132,19 +128,19 @@ Surf.prototype = {
       })
     }
 
-    if (this.window.document.readyState === 'complete') {
+    if (document.readyState === 'complete') {
       setTimeout(ready, 1)
     } else if (!readyEventHandlersInstalled) {
-      if (this.window.document.addEventListener) {
-        this.window.document.addEventListener('DOMContentLoaded', ready, false)
-        this.window.addEventListener('load', ready, false)
+      if (document.addEventListener) {
+        document.addEventListener('DOMContentLoaded', ready, false)
+        window.addEventListener('load', ready, false)
       } else {
-        this.window.document.attachEvent('onreadystatechange', function() {
-          if (this.window.document.readyState === 'complete') {
+        document.attachEvent('onreadystatechange', function() {
+          if (document.readyState === 'complete') {
             ready()
           }
         })
-        this.window.attachEvent('onload', ready)
+        window.attachEvent('onload', ready)
       }
 
       readyEventHandlersInstalled = true
@@ -585,7 +581,7 @@ Surf.prototype = {
    * @return {boolean}
    */
   isOn: function(url) {
-    return this.window.document.location.href == url.toLowerCase()
+    return document.location.href == url.toLowerCase()
   },
   /** Checks that the text content of the current item is the given text
    * @param {string} text The text to check against
@@ -639,7 +635,7 @@ Surf.prototype = {
 }
 
 Surf.toString = function() {
-  return 'Surf(selector [, useThisWindow] [, debug]) { [code] }'
+  return 'Surf(selector [] [, debug]) { [code] }'
 }
 
 export default Surf

@@ -13,13 +13,12 @@ const AutoSurf = function() {
   }
 
   this.version = '0.1'
+  this.storeName = location.origin + location.pathname + '_atsrf'
+  this.actionables = this.schedules = this.results = []
+  this.events = {}
 }
 
 AutoSurf.prototype = {
-  actionables: [],
-  schedules: [],
-  results: [],
-  events: {},
   __check: function(prop, index) {
     if (this.actionables.length === index) {
       this.actionables.push({
@@ -110,7 +109,9 @@ AutoSurf.prototype = {
           this.done = true
           this.next()
         }
-      } else this.to_resume = 2
+      } else {
+        this.to_resume = 2
+      }
     } catch (e) {
       this.__fail()
       this.ready = true
@@ -145,6 +146,7 @@ AutoSurf.prototype = {
     } else {
       this.__success()
     }
+
     if (!this.paused && !this.done && !this.waiting) {
       this.ready = true
       this.loading = false
@@ -156,17 +158,19 @@ AutoSurf.prototype = {
   __doNext: function(reset) {
     try {
       this.currentAction = 'do'
+
       if (reset) {
         this.currentIndex = 0
       } else {
         this.currentIndex++
       }
+
       if (
         this.ready &&
         !this.loading &&
         this.actionables[this.currentSchedule]
       ) {
-        this.trigger('updateLogs', { currentSchedule: this.currentSchedule })
+        this.trigger('resetLogs', { currentSchedule: this.currentSchedule })
 
         if (this.actionables[this.currentSchedule].toDo.length) {
           const last = this.current || {}
@@ -215,7 +219,9 @@ AutoSurf.prototype = {
           // nothing to do
           this.__checkNext(true)
         }
-      } else this.to_resume = 1
+      } else {
+        this.to_resume = 1
+      }
     } catch (e) {
       this.__error(e.message)
       this.__doNext()
@@ -294,31 +300,17 @@ AutoSurf.prototype = {
 
       return this
     }
+
     if (message !== false) {
       this.__log(message || 'Open page [' + url + ']').__startWorking()
-    }
-
-    if (!this.iframe) {
-      this.iframe = Surf('iframe', true).__setContext(this)
     }
 
     this.url = url
     this.ready = false
     this.loading = true
-    this.iframe.__goto(
-      url,
-      function() {
-        if (this.debug) {
-          console.info('URL -> ' + this.getCurrentUrl())
-        }
 
-        this.iframe.item.contentWindow.onbeforeunload = function() {
-          this.unloaded = true
-        }.bind(this)
-        delete this.unloaded
-        this.__done()
-      }.bind(this)
-    )
+    localStorage.setItem(this.storeName, JSON.stringify(this))
+    location.href = url
 
     return this
   },
@@ -341,7 +333,7 @@ AutoSurf.prototype = {
         console.debug('CHECK :: ' + msg)
       }
 
-      this.trigger('log', { isCheck, message: msg })
+      this.trigger('log', { message: msg })
     }
 
     return this
@@ -574,9 +566,7 @@ AutoSurf.prototype = {
    * @returns {string}
    */
   getCurrentUrl: function() {
-    return this.iframe
-      ? this.iframe.attr('contentDocument').location.href
-      : null
+    return location.href
   },
   /**
    * Checks if there's a next schedule after the current one
@@ -640,16 +630,21 @@ AutoSurf.prototype = {
    */
   on: function(event, callback) {
     if (event === '*') {
-      ;[
+      [
+        'actionError',
+        'actionFailed',
+        'actionSuccess',
+        'done',
+        'log',
         'paused',
+        'resetLogs',
         'resumed',
-        'work.start',
-        'work.stop',
-        'schedule.start',
-        'schedule.finish',
-        'action.success',
-        'action.error',
-        'done'
+        'scheduleFinish',
+        'scheduleInit',
+        'scheduleStart',
+        'working',
+        'workStart',
+        'workStop'
       ].map(
         function(evt) {
           this.events[evt] = callback
@@ -698,6 +693,33 @@ AutoSurf.prototype = {
       action: this.currentAction,
       lastSchedule: this.actionables.length === this.currentSchedule + 1
     })
+
+    return this
+  },
+  /**
+   * Called to inform AutoSurf that parent code is ready
+   * @param {AutoSurf}
+   */
+  ready: function(callback) {
+    let stored = localStorage.getItem(this.storeName)
+
+    if (stored) {
+      stored = JSON.parse(stored)
+
+      for (let key in stored) {
+        this[key] = stored[key]
+      }
+
+      localStorage.removeItem(this.storeName)
+
+      if (this.debug) {
+        console.info('URL -> ' + this.getCurrentUrl())
+      }
+
+      this.__done()
+    }
+
+    callback(stored !== null)
 
     return this
   },

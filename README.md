@@ -14,6 +14,10 @@
 
 ### Use nodejs
 
+```bash
+yarn add @dscribers/autosurf
+```
+
 ```js
 import AutoSurf from '@dscribers/autosurf'
 

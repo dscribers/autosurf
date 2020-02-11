@@ -22,14 +22,9 @@ const Surf = function(selector) {
  * @return {Surf}
  */
 Surf.prototype = {
-  __log: function(msg) {
-    console.log(msg)
-  },
   __done: function(action, failed) {
     if (this.context) {
       this.context.__done(failed)
-    } else {
-      this.__log('Done :: ' + action)
     }
 
     return this
@@ -338,7 +333,7 @@ Surf.prototype = {
    * @returns {Surfer}
    */
   refresh: function() {
-    this.context.iframe.item.contentWindow.location.reload()
+    location.reload()
 
     return this
   },

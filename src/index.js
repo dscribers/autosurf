@@ -14,7 +14,9 @@ const AutoSurf = function() {
 
   this.version = '0.1'
   this.storeName = location.origin + location.pathname + '_atsrf'
-  this.actionables = this.schedules = this.results = []
+  this.actionables = []
+  this.schedules = []
+  this.results = []
   this.events = {}
 }
 
@@ -46,10 +48,10 @@ AutoSurf.prototype = {
 
     return this
   },
-  __checkNext: function(reset) {
+  __checkNext: function(fresh) {
     try {
       this.currentAction = 'check'
-      if (reset) {
+      if (fresh) {
         this.currentIndex = 0
       } else {
         this.currentIndex++
@@ -81,7 +83,7 @@ AutoSurf.prototype = {
             }
 
             const current = Surf(this.current.selector)
-            if (!this.current.selector instanceof Array) {
+            if (!Array.isArray(this.current.selector)) {
               current.focus()
             }
 
@@ -155,11 +157,11 @@ AutoSurf.prototype = {
 
     return this
   },
-  __doNext: function(reset) {
+  __doNext: function(fresh) {
     try {
       this.currentAction = 'do'
 
-      if (reset) {
+      if (fresh) {
         this.currentIndex = 0
       } else {
         this.currentIndex++
@@ -204,10 +206,16 @@ AutoSurf.prototype = {
                 this.current.selector = []
               }
             }
+            try {
+              this.__log(this.current.description).__startWorking()
+            } catch (e) {
+              console.error(e.message)
+            }
+
 
             const current = Surf(this.current.selector)
 
-            if (!this.current.selector instanceof Array) {
+            if (!Array.isArray(this.current.selector)) {
               current.focus()
             }
 
@@ -264,7 +272,6 @@ AutoSurf.prototype = {
           failed: 0
         })
       }
-      console.log('failed')
       this.results[this.currentSchedule]['failed']++
       this.results[this.currentSchedule]['list'].push({
         action: this.currentAction,
@@ -297,20 +304,18 @@ AutoSurf.prototype = {
         }.bind(this),
         1000
       )
+    } else {
+      if (message !== false) {
+        this.__log(message || 'Open page [' + url + ']').__startWorking()
+      }
 
-      return this
+      this.url = url
+      this.ready = false
+      this.loading = true
+
+      localStorage.setItem(this.storeName, JSON.stringify(this))
+      location.href = url
     }
-
-    if (message !== false) {
-      this.__log(message || 'Open page [' + url + ']').__startWorking()
-    }
-
-    this.url = url
-    this.ready = false
-    this.loading = true
-
-    localStorage.setItem(this.storeName, JSON.stringify(this))
-    location.href = url
 
     return this
   },
@@ -422,7 +427,6 @@ AutoSurf.prototype = {
         })
       }
 
-      console.log('passed')
       this.results[this.currentSchedule]['passed']++
       this.results[this.currentSchedule]['list'].push({
         action: this.currentAction,
@@ -608,7 +612,7 @@ AutoSurf.prototype = {
 
       return this
     }
-    this.currentAction = 'do'
+
     this.currentSchedule++
     this.ready = true
     this.done = false
@@ -630,7 +634,7 @@ AutoSurf.prototype = {
    */
   on: function(event, callback) {
     if (event === '*') {
-      [
+      ;[
         'actionError',
         'actionFailed',
         'actionSuccess',
@@ -818,7 +822,7 @@ AutoSurf.prototype = {
    */
   trigger: function(event, detail) {
     try {
-      this.events[event].call({
+      this.events[event]({
         name: event,
         schedule: this.schedules[this.currentSchedule],
         detail

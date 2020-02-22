@@ -13,11 +13,17 @@ const AutoSurf = function() {
   }
 
   this.version = '0.1'
-  this.storeName = location.origin + location.pathname + '_atsrf'
+  this.config = {
+    debug: false,
+    delayBetweenSchedules: 500
+  }
+  this.needsBackup = true
+  this.storeName = location.origin + '_atsrf'
   this.actionables = []
   this.schedules = []
   this.results = []
   this.events = {}
+  this.reloaded = false
 }
 
 AutoSurf.prototype = {
@@ -109,7 +115,7 @@ AutoSurf.prototype = {
             })
           }
           this.done = true
-          this.next()
+          this.nextSchedule()
         }
       } else {
         this.to_resume = 2
@@ -179,12 +185,6 @@ AutoSurf.prototype = {
           this.current = this.actionables[this.currentSchedule].toDo.shift()
 
           if (this.current) {
-            try {
-              this.__log(this.current.description).__startWorking()
-            } catch (e) {
-              console.error(e.message)
-            }
-
             if (!this.current.selector) {
               if (last.selector) {
                 this.current.selector = last.selector
@@ -206,12 +206,20 @@ AutoSurf.prototype = {
                 this.current.selector = []
               }
             }
+
+            if (this.reloaded) {
+              this.reloaded = false
+
+              if (this.current.action === 'waitTillPageLoads') {
+                return this.__doNext()
+              }
+            }
+
             try {
               this.__log(this.current.description).__startWorking()
             } catch (e) {
               console.error(e.message)
             }
-
 
             const current = Surf(this.current.selector)
 
@@ -239,7 +247,7 @@ AutoSurf.prototype = {
     try {
       this.__stopWorking()
       if (msg) {
-        if (this.debug) {
+        if (this.config.debug) {
           console.error(msg)
           console.warn('--> FAILED')
         }
@@ -258,7 +266,7 @@ AutoSurf.prototype = {
   __fail: function() {
     try {
       this.__stopWorking()
-      if (this.debug) {
+      if (this.config.debug) {
         console.warn('--> FAILED')
       }
 
@@ -313,7 +321,7 @@ AutoSurf.prototype = {
       this.ready = false
       this.loading = true
 
-      localStorage.setItem(this.storeName, JSON.stringify(this))
+      this.backup()
       location.href = url
     }
 
@@ -321,7 +329,7 @@ AutoSurf.prototype = {
   },
   __log: function(msg, allDone = false) {
     if (msg) {
-      if (this.debug) {
+      if (this.config.debug) {
         !allDone
           ? console.debug('DO :: ' + msg)
           : console.debug(msg.toUpperCase())
@@ -334,7 +342,7 @@ AutoSurf.prototype = {
   },
   __logCheck: function(msg) {
     if (msg) {
-      if (this.debug) {
+      if (this.config.debug) {
         console.debug('CHECK :: ' + msg)
       }
 
@@ -412,7 +420,7 @@ AutoSurf.prototype = {
   __success: function() {
     try {
       this.__stopWorking()
-      if (this.debug) {
+      if (this.config.debug) {
         console.log('--> SUCCESS')
       }
 
@@ -492,6 +500,15 @@ AutoSurf.prototype = {
 
     return this
   },
+  /**
+   * Backs up the application data. Should be called before the page reloads
+   */
+  backup: function() {
+    if (this.needsBackup) {
+      localStorage.setItem(this.storeName, JSON.stringify(this))
+    }
+    return this
+  },
   /** Checks the result of everything done
    * @param {object} prop  Keys include:
    *
@@ -529,13 +546,20 @@ AutoSurf.prototype = {
    */
   check: function(prop) {
     if (this.from_file) {
-      if (this.debug) {
+      if (this.config.debug) {
         console.error('FILE MODE ACTIVE')
       }
       return this
     }
 
     return this.__check(prop, 0)
+  },
+  /**
+   * Clears any backed up application data
+   */
+  clearBackup: function() {
+    localStorage.removeItem(this.storeName)
+    return this
   },
   /** Executes the given action
    * @param {object} prop Keys include:
@@ -557,7 +581,7 @@ AutoSurf.prototype = {
    */
   do: function(prop) {
     if (this.from_file && arguments.length < 2) {
-      if (this.debug) {
+      if (this.config.debug) {
         console.error('FILE MODE ACTIVE')
       }
       return this
@@ -583,10 +607,12 @@ AutoSurf.prototype = {
    * Executes the next schedule
    * @returns {AutoSurf}
    */
-  next: function() {
+  nextSchedule: function() {
     if (!this.done) {
-      if (this.debug) {
-        console.warn('Cannot execute next until current schedule ends.')
+      if (this.config.debug) {
+        console.warn(
+          'Cannot execute next schedule until current schedule ends.'
+        )
       }
       return this
     }
@@ -606,22 +632,28 @@ AutoSurf.prototype = {
         ).__stopWorking()
 
         // trigger done
-
+        this.needsBackup = false
         this.trigger('done', this.results)
       }
 
       return this
     }
 
-    this.currentSchedule++
-    this.ready = true
-    this.done = false
+    this.needsBackup = true
+    setTimeout(
+      () => {
+        this.currentSchedule++
+        this.ready = true
+        this.done = false
 
-    this.trigger('scheduleStart', {
-      scheduleIndex: this.currentSchedule,
-      lastSchedule: this.actionables.length === this.currentSchedule + 1
-    })
-    this.__doNext(true)
+        this.trigger('scheduleStart', {
+          scheduleIndex: this.currentSchedule,
+          lastSchedule: this.actionables.length === this.currentSchedule + 1
+        })
+        this.__doNext(true)
+      },
+      this.nextSchedule > -1 ? this.config.delayBetweenSchedules : 0
+    )
 
     return this
   },
@@ -664,7 +696,7 @@ AutoSurf.prototype = {
 
     return this
   },
-  parse: function(obj) {
+  parseFeature: function(obj) {
     if (obj === undefined || typeof obj !== 'object') {
       console.error('Surf.parseObject() requires an object parameter')
       return this
@@ -687,7 +719,7 @@ AutoSurf.prototype = {
     this.ready = false
     this.paused = true
 
-    if (this.debug) {
+    if (this.config.debug) {
       console.debug('SCHEDULE :: PAUSE')
     }
 
@@ -702,9 +734,11 @@ AutoSurf.prototype = {
   },
   /**
    * Called to inform AutoSurf that parent code is ready
-   * @param {AutoSurf}
+   *
+   * @param {*} beforeCallback
+   * @param {*} afterCallback
    */
-  ready: function(callback) {
+  ready: function(beforeCallback, afterCallback) {
     let stored = localStorage.getItem(this.storeName)
 
     if (stored) {
@@ -716,14 +750,24 @@ AutoSurf.prototype = {
 
       localStorage.removeItem(this.storeName)
 
-      if (this.debug) {
+      if (this.config.debug) {
         console.info('URL -> ' + this.getCurrentUrl())
       }
 
+      if (typeof beforeCallback === 'function') {
+        beforeCallback(true)
+      }
+
+      this.reloaded = true
+      this.__waiting(false)
       this.__done()
+    } else if (typeof beforeCallback === 'function') {
+      beforeCallback(false)
     }
 
-    callback(stored !== null)
+    if (typeof afterCallback === 'function') {
+      afterCallback(stored !== null)
+    }
 
     return this
   },
@@ -750,7 +794,7 @@ AutoSurf.prototype = {
     Surf('td#frame', true).addClass('on')
     this.done = true
     this.results = []
-    this.next()
+    this.nextSchedule()
 
     return this
   },
@@ -772,7 +816,7 @@ AutoSurf.prototype = {
       this.__doNext()
     }
 
-    if (this.debug) {
+    if (this.config.debug) {
       console.debug('SCHEDULE :: RESUME')
     }
 
@@ -786,20 +830,17 @@ AutoSurf.prototype = {
     return this
   },
   /** Initiates execution
-   * @param {object} settings Keys include:
-   * url (string) - path to file to load
-   * description (string) - The description to log on screen
+   * @param {object} config Keys include:
    * debug (bool) - Indicates whether to output messages
+   * delayBetweenSchedules (int): The millisecond delay between schedules
    * @return {AutoSurf}
    */
-  start: function(settings) {
-    this.debug = settings && settings.debug
-
+  start: function(config = {}) {
     // Don't continue until loading is done
     if (this.loading) {
       setTimeout(
         function() {
-          this.start(settings, false)
+          this.start(config, false)
         }.bind(this),
         1000
       )
@@ -809,8 +850,9 @@ AutoSurf.prototype = {
 
     this.currentSchedule = -1
     this.done = true
+    this.config = { ...this.config, ...config }
 
-    this.next()
+    this.nextSchedule()
 
     return this
   },

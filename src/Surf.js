@@ -77,19 +77,6 @@ Surf.prototype = {
 
     return this
   },
-  __goto: function(url, func) {
-    if (func) {
-      this.onload(
-        function() {
-          func.call(this.context || this)
-        }.bind(this)
-      )
-    }
-
-    this.item.src = url
-
-    return this
-  },
   /** Executes the given function when the document is loaded without waiting for page assets to load
    * @param {function} func The function to call
    * @return {Surfer}
@@ -306,6 +293,10 @@ Surf.prototype = {
 
     return this
   },
+  /**
+   * Pauses execution until the page reloads
+   * @returns {Surfer}
+   */
   waitTillPageLoads: function() {
     // requires no code
     setTimeout(
@@ -317,6 +308,8 @@ Surf.prototype = {
       }.bind(this),
       1000
     )
+
+    return this
   },
   /**
    * Pauses the execution of the schedule
@@ -370,7 +363,7 @@ Surf.prototype = {
    * @param {string} str The string to type
    * @return {Surfer}
    */
-  type: function(str, speed) {
+  type: function(str, speed = 5) {
     if (this.item) {
       const args = Array.apply(null, arguments)
 
@@ -393,7 +386,7 @@ Surf.prototype = {
               str: str[i],
               final: i == str.length - 1
             }),
-            (speed || 10) * (i + 1)
+            speed * (i + 1)
           )
         }
       }

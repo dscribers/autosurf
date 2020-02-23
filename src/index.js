@@ -327,26 +327,39 @@ AutoSurf.prototype = {
 
     return this
   },
-  __log: function(msg, allDone = false) {
-    if (msg) {
+  __log: function(message, allDone = false) {
+    if (message) {
       if (this.config.debug) {
         !allDone
-          ? console.debug('DO :: ' + msg)
-          : console.debug(msg.toUpperCase())
+          ? console.debug('DO :: ' + message)
+          : console.debug(message.toUpperCase())
       }
 
-      this.trigger('log', { allDone, message: msg })
+      this.trigger('log', {
+        allDone,
+        message,
+        scheduleIndex: this.currentSchedule,
+        actionIndex: this.currentIndex,
+        action: this.currentAction,
+        lastSchedule: this.actionables.length === this.currentSchedule + 1
+      })
     }
 
     return this
   },
-  __logCheck: function(msg) {
-    if (msg) {
+  __logCheck: function(message) {
+    if (message) {
       if (this.config.debug) {
-        console.debug('CHECK :: ' + msg)
+        console.debug('CHECK :: ' + message)
       }
 
-      this.trigger('log', { message: msg })
+      this.trigger('log', {
+        message,
+        scheduleIndex: this.currentSchedule,
+        actionIndex: this.currentIndex,
+        action: this.currentAction,
+        lastSchedule: this.actionables.length === this.currentSchedule + 1
+      })
     }
 
     return this

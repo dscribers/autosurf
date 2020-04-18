@@ -1,12 +1,29 @@
-import Surf from './Surf'
-import SurfBase from './SurfBase'
+import AdapterBase from './adapters/AdapterBase'
+import Surf from './adapters/Surf'
 
 export default class AutoSurf {
-  static constructor(config = {}) {
+  static #STATUS_SUCCESS = true
+  static #STATUS_ERROR = false
+
+  /**
+   * @param {object} config The options. Keys include:
+   * delayBetweenSchedules (int): The millisecond delay between schedules. Defaults to 500
+   * @param {AdapterBase} Adapter A subclass of AdapterBase
+   */
+  static constructor(config = {}, Adapter) {
     this.version = '1.0.0'
 
+    if (!Adapter) {
+      Adapter = Surf
+    } else if (typeof Adapter !== 'function') {
+      throw new Error('Adapter must be a class')
+    } else if (!(new Adapter() instanceof AdapterBase)) {
+      throw new Error('Adapter must be a subclass of AdapterBase')
+    }
+
+    this.#Surf = Adapter
+
     this.config = {
-      debug: false,
       delayBetweenSchedules: 500,
       ...config,
     }
@@ -140,8 +157,7 @@ export default class AutoSurf {
 
   parseFeature(obj) {
     if (obj === undefined || typeof obj !== 'object') {
-      console.error('Surf.parseObject() requires an object parameter')
-      return this
+      throw new Error('Parameter must be an object')
     }
 
     this.#schedules = obj.schedules
@@ -260,7 +276,6 @@ export default class AutoSurf {
 
   /** Initiates execution
    * @param {object} config Keys include:
-   * debug (bool) - Indicates whether to output messages
    * delayBetweenSchedules (int): The millisecond delay between schedules
    * @return {AutoSurf}
    */
@@ -374,15 +389,10 @@ export default class AutoSurf {
   }
 
   #done(status) {
-    switch (status) {
-      case SurfBase.STATUS_ERROR:
-        this.#fail()
-        break
-      case SurfBase.STATUS_SUCCESS:
-        this.#success()
-        break
-      default:
-        throw new Error('Invalid status')
+    if (status === this.STATUS_SUCCESS) {
+      this.#success()
+    } else {
+      this.#error()
     }
 
     if (!this.#paused && !this.#done && !this.#waiting) {
@@ -514,14 +524,23 @@ export default class AutoSurf {
     if (this[handler]) {
       this[handler](callback, selector, params)
     } else {
-      Surf[action](callback, selector, ...params)
-      Surf.doFocus(callback, selector)
+      try {
+        this.#Surf[action](selector, ...params)
+
+        callback(this.STATUS_SUCCESS)
+      } catch (e) {
+        callback(this.STATUS_ERROR)
+      }
+
+      try {
+        this.#Surf.doFocus(selector)
+      } catch (e) {}
     }
   }
 
   #handleDoGoto(callback, selector, urlParams) {
     if (!urlParams.length) {
-      return callback(SurfBase.STATUS_ERROR)
+      return callback(this.STATUS_ERROR)
     }
 
     if (this.#currentSchedule === undefined) {
@@ -535,7 +554,13 @@ export default class AutoSurf {
       this.backup()
       this.#startWorking()
 
-      Surf.goto(callback, selector, ...urlParams)
+      try {
+        this.#Surf.goto(selector, ...urlParams)
+
+        callback(this.STATUS_SUCCESS)
+      } catch (e) {
+        callback(this.STATUS_ERROR)
+      }
     }
 
     return this
@@ -544,32 +569,30 @@ export default class AutoSurf {
   #handleDoPause(callback) {
     this.pause()
 
-    callback(SurfBase.STATUS_SUCCESS)
+    callback(this.STATUS_SUCCESS)
   }
 
   #handleDoWait(callback, selector, millisecondsParam) {
-    this.#waiting()
+    try {
+      this.#waiting()
 
-    Surf.wait(
-      (status) => {
-        this.#waiting(false)
+      this.#Surf.wait(selector, ...millisecondsParam)
 
-        callback(status)
-      },
-      selector,
-      ...millisecondsParam
-    )
+      this.#waiting(false)
+
+      callback(this.STATUS_SUCCESS)
+    } catch (e) {
+      callback(this.STATUS_ERROR)
+    }
   }
 
   #handleDoWaitTillPageLoads(callback) {
     if (this.#reloaded) {
       this.#reloaded = false
 
-      if (action === 'waitTillPageLoads') {
-        return this.#done(SurfBase.STATUS_SUCCESS)
-      }
+      callback(this.STATUS_SUCCESS)
     } else {
-      setTimeout(this.#handleDoWaitTillPageLoads(callback))
+      setTimeout(() => this.#handleDoWaitTillPageLoads(callback), 500)
     }
   }
 
@@ -767,14 +790,14 @@ export default class AutoSurf {
     try {
       if (action.toLowerCase().indexOf('not') !== -1) {
         // must not be true
-        if (status === SurfBase.STATUS_SUCCESS) {
+        if (status === this.STATUS_SUCCESS) {
           this.#fail()
         } else {
           this.#success()
         }
       } else {
         // must be true
-        if (status === SurfBase.STATUS_SUCCESS) {
+        if (status === this.STATUS_SUCCESS) {
           this.#success()
         } else {
           this.#fail()

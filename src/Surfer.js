@@ -9,6 +9,15 @@ export default class Surfer {
   }
 
   /**
+   * The first item that matches the given selector
+   *
+   * @returns {HTMLElement|undefined}
+   */
+  get item() {
+    return this.#items[0]
+  }
+
+  /**
    * The number of items that match the given selector
    *
    * @returs {integer}
@@ -18,19 +27,10 @@ export default class Surfer {
   }
 
   /**
-   * The first item that matches the given selector
-   *
-   * @returns {HTMLElement|undefined}
-   */
-  get #item() {
-    return this.#items[0]
-  }
-
-  /**
    * The first item that matches the selector or an empty object
    */
   get #itemy() {
-    return this.#item || {}
+    return this.item || {}
   }
 
   /**
@@ -96,8 +96,8 @@ export default class Surfer {
    * @returns {HTMLElement|undefined}
    */
   closest(selector) {
-    if (this.#item) {
-      return this.#item.closest(selector)
+    if (this.item) {
+      return this.item.closest(selector)
     }
   }
 
@@ -138,7 +138,7 @@ export default class Surfer {
    * @returns {boolean}
    */
   hasClass(str) {
-    if (!this.#item) {
+    if (!this.item) {
       return false
     }
 
@@ -146,7 +146,7 @@ export default class Surfer {
 
     str.split(' ').forEach((_str) => {
       if (has) {
-        has = this.#item.classList.contains(_str)
+        has = this.item.classList.contains(_str)
       }
     })
 

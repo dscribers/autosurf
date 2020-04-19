@@ -578,7 +578,7 @@ export default class AutoSurf {
   }
 
   #initAdapter() {
-    this.#Surf.init((fromStore) => {
+    this.#Surf.init(this, (fromStore) => {
       if (fromStore) {
         const allowedKeys = Object.keys(this.toJSON())
 
@@ -619,7 +619,7 @@ export default class AutoSurf {
         this.#stopWorking()
 
         // trigger done
-        this.#Surf.quit()
+        this.#Surf.quit(this)
         this.trigger('done', this.#results)
       }
 

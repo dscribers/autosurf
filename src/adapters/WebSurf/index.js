@@ -2,13 +2,13 @@ import BaseAdapter from '../BaseAdapter'
 import Surfer from './Surfer'
 
 export default class WebSurf extends BaseAdapter {
-  #storeName = location.origin + '_atsrf'
-  #shouldBackup = false
-  #isReloaded = false
+  static #storeName = location.origin + '_atsrf'
+  static #shouldBackup = false
+  static #isReloaded = false
 
-  #maxLoadWaitTime = 30000 // 30 seconds
-  #waitPollTime = 500
-  #waited = 0
+  static #maxLoadWaitTime = 30000 // 30 seconds
+  static #waitPollTime = 500
+  static #waited = 0
 
   /**
    * @inheritdoc
@@ -222,6 +222,8 @@ export default class WebSurf extends BaseAdapter {
   static doType(selector, str, speed = 500) {
     if (selector) {
       const item = new Surfer(selector)
+
+      item.value('')
 
       let index = 0
 

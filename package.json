@@ -8,15 +8,20 @@
       "module": "dist/autosurf.es.js",
       "browser": "dist/autosurf.min.js"
     },
+    "base_adapter": {
+      "main": "dist/base-adapter.js",
+      "module": "dist/base-adapter.es.js",
+      "browser": "dist/base-adapter.min.js"
+    },
     "websurf": {
       "main": "dist/websurf.js",
       "module": "dist/websurf.es.js",
       "browser": "dist/websurf.min.js"
     },
-    "base_adapter": {
-      "main": "dist/base-adapter.js",
-      "module": "dist/base-adapter.es.js",
-      "browser": "dist/base-adapter.min.js"
+    "websurfer": {
+      "main": "dist/websurfer.js",
+      "module": "dist/websurfer.es.js",
+      "browser": "dist/websurfer.min.js"
     }
   },
   "repository": "https://github.com/dscribers/autosurf",

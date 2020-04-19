@@ -16,26 +16,25 @@ export default class AutoSurf {
   #results = []
   #events = {}
   #allEvents = [
-    'actionError',
-    'actionFailed',
-    'actionSuccess',
     'done',
     'paused',
-    'restarting',
     'resumed',
     'scheduleFinish',
     'scheduleInit',
     'scheduleStart',
+    'workError',
+    'workFailed',
     'workStart',
-    'workStop',
+    'workSuccess',
   ]
   #noSelectorActions = ['wait', 'pause', 'refresh', 'goto', 'waitTillPageLoads']
 
+  #canStart = false
   #isDone = false
+  #isInitialized = false
   #isLoading = false
   #isPaused = false
   #isReady = false
-  #isReadyCallback = () => {}
   #isWorking = false
   #isWaiting = false
 
@@ -50,7 +49,7 @@ export default class AutoSurf {
    * delayBetweenSchedules (int): The millisecond delay between schedules. Defaults to 500
    * @param {BaseAdapter} Adapter A subclass of BaseAdapter
    */
-  static constructor(config = {}, Adapter) {
+  constructor(config = {}, Adapter) {
     this.version = '1.0.0'
 
     if (!Adapter) {
@@ -67,8 +66,6 @@ export default class AutoSurf {
       delayBetweenSchedules: 500,
       ...config,
     }
-
-    this.#initAdapter()
   }
 
   /** Checks the result of everything done
@@ -170,7 +167,7 @@ export default class AutoSurf {
     this.#isReady = false
     this.#isPaused = true
 
-    this.trigger('paused', {
+    this.#trigger('paused', {
       scheduleIndex: this.#currentSchedule,
       actionIndex: this.#currentIndex,
       action: this.#currentAction,
@@ -184,8 +181,10 @@ export default class AutoSurf {
    * Called to inform AutoSurf that parent code is ready
    * @param {function} callback The function to call when everything is ready
    */
-  ready(callback) {
-    this.#isReadyCallback = callback
+  ready(callback = () => {}) {
+    this.#initAdapter(callback)
+
+    this.#canStart = true
 
     return this
   }
@@ -199,7 +198,7 @@ export default class AutoSurf {
       setTimeout(() => this.restart(), 1000)
     }
 
-    this.trigger('reset', {})
+    this.#trigger('reset', {})
 
     this.#parseSchedules()
 
@@ -230,7 +229,7 @@ export default class AutoSurf {
       this.#doNext()
     }
 
-    this.trigger('resumed', {
+    this.#trigger('resumed', {
       scheduleIndex: this.#currentSchedule,
       actionIndex: this.#currentIndex,
       action: this.#currentAction,
@@ -246,6 +245,10 @@ export default class AutoSurf {
    * @return {AutoSurf}
    */
   start(config = {}) {
+    if (!this.#canStart) {
+      throw new Error('You have to call ready first')
+    }
+
     // Don't continue until loading is done
     if (this.#isLoading) {
       setTimeout(() => this.start(config, false), 1000)
@@ -270,7 +273,9 @@ export default class AutoSurf {
       _actionables: this.#actionables,
       _schedules: this.#schedules,
       _results: this.#results,
+      _canStart: this.#canStart,
       _isDone: this.#isDone,
+      _isInitialized: this.#isInitialized,
       _isLoading: this.#isLoading,
       _isPaused: this.#isPaused,
       _isReady: this.#isReady,
@@ -280,26 +285,8 @@ export default class AutoSurf {
       _currentAction: this.#currentAction,
       _currentIndex: this.#currentIndex,
       _currentSchedule: this.#currentSchedule,
-      _toResume: this.#actionables,
+      _toResume: this.#toResume,
     }
-  }
-
-  /**
-   * Triggers the given event
-   * @param {string} event
-   * @param {Object} detail The object to pass as parameter to the callback
-   * @returns {AutoSurf}
-   */
-  trigger(event, detail) {
-    try {
-      this.#events[event]({
-        name: event,
-        schedule: this.#schedules[this.#currentSchedule],
-        detail,
-      })
-    } catch (e) {}
-
-    return this
   }
 
   #checkNext(fresh) {
@@ -356,7 +343,7 @@ export default class AutoSurf {
           }
         } else {
           if (!this.#isDone) {
-            this.trigger('scheduleFinish', {
+            this.#trigger('scheduleFinish', {
               scheduleIndex: this.#currentSchedule,
               lastSchedule:
                 this.#actionables.length === this.#currentSchedule + 1,
@@ -441,7 +428,7 @@ export default class AutoSurf {
       this.#stopWorking()
 
       if (msg) {
-        this.trigger('actionError', {
+        this.#trigger('workError', {
           scheduleIndex: this.#currentSchedule,
           actionIndex: this.#currentIndex,
           action: this.#currentAction,
@@ -477,7 +464,7 @@ export default class AutoSurf {
 
       // trigger failed
 
-      this.trigger('actionFailed', {
+      this.#trigger('workFailed', {
         scheduleIndex: this.#currentSchedule,
         actionIndex: this.#currentIndex,
         action: this.#currentAction,
@@ -492,6 +479,8 @@ export default class AutoSurf {
     const ucase = (str) => str.replace(/^[a-z]/i, (chr) => chr.toUpperCase())
     const method = `${this.#currentAction}${ucase(action)}`
     const handler = `#handle${ucase(method)}`
+
+    this.#startWorking()
 
     if (this[handler]) {
       this[handler](callback, selector, params)
@@ -539,7 +528,6 @@ export default class AutoSurf {
       this.#isLoading = true
 
       this.backup()
-      this.#startWorking()
 
       try {
         this.#Surf.doGoto(...urlParams)
@@ -577,7 +565,7 @@ export default class AutoSurf {
     return this.#actionables[this.#currentSchedule + 1] !== undefined
   }
 
-  #initAdapter() {
+  #initAdapter(callback) {
     this.#Surf.init(this, (fromStore) => {
       if (fromStore) {
         const allowedKeys = Object.keys(this.toJSON())
@@ -597,7 +585,7 @@ export default class AutoSurf {
         }
       }
 
-      this.#isReadyCallback(!!fromStore)
+      callback(!!fromStore)
     })
   }
 
@@ -620,7 +608,7 @@ export default class AutoSurf {
 
         // trigger done
         this.#Surf.quit(this)
-        this.trigger('done', this.#results)
+        this.#trigger('done', this.#results)
       }
 
       return this
@@ -632,13 +620,14 @@ export default class AutoSurf {
         this.#isReady = true
         this.#isDone = false
 
-        this.trigger('scheduleStart', {
+        this.#trigger('scheduleStart', {
           scheduleIndex: this.#currentSchedule,
           lastSchedule: this.#actionables.length === this.#currentSchedule + 1,
         })
+
         this.#doNext(true)
       },
-      this.#nextSchedule > -1 ? this.#config.delayBetweenSchedules : 0
+      this.#config.delayBetweenSchedules
     )
 
     return this
@@ -646,7 +635,7 @@ export default class AutoSurf {
 
   #parseSchedules() {
     this.#schedules.forEach((schedule, i) => {
-      this.trigger('scheduleInit', {
+      this.#trigger('scheduleInit', {
         schedule,
         id: `_${i}`,
       })
@@ -701,7 +690,7 @@ export default class AutoSurf {
       ...prop,
     }
 
-    if (this.#actionables.length == index) {
+    if (this.#actionables.length === index) {
       this.#actionables.push({
         toDo: [],
         toCheck: [],
@@ -714,30 +703,24 @@ export default class AutoSurf {
   }
 
   #startWorking() {
-    if (this.#working) {
+    if (this.#isWorking) {
       return this
     }
 
-    this.trigger('workStart', {
+    this.#trigger('workStart', {
       scheduleIndex: this.#currentSchedule,
       actionIndex: this.#currentIndex,
       action: this.#currentAction,
       lastSchedule: this.#actionables.length === this.#currentSchedule + 1,
     })
 
-    this.#working()
+    this.#isWorking = true
 
     return this
   }
 
   #stopWorking() {
     this.#isWorking = false
-    this.trigger('workStop', {
-      scheduleIndex: this.#currentSchedule,
-      actionIndex: this.#currentIndex,
-      action: this.#currentAction,
-      lastSchedule: this.#actionables.length === this.#currentSchedule + 1,
-    })
 
     return this
   }
@@ -765,11 +748,23 @@ export default class AutoSurf {
 
       // trigger success
 
-      this.trigger('actionSuccess', {
+      this.#trigger('workSuccess', {
         scheduleIndex: this.#currentSchedule,
         actionIndex: this.#currentIndex,
         action: this.#currentAction,
         lastSchedule: this.#actionables.length === this.#currentSchedule + 1,
+      })
+    } catch (e) {}
+
+    return this
+  }
+
+  #trigger(event, detail) {
+    try {
+      this.#events[event]({
+        name: event,
+        schedule: this.#schedules[this.#currentSchedule],
+        detail,
       })
     } catch (e) {}
 
@@ -806,12 +801,6 @@ export default class AutoSurf {
 
   #waiting(status) {
     this.#isWaiting = status !== undefined ? status : true
-
-    return this
-  }
-
-  #working() {
-    this.#isWorking = true
 
     return this
   }

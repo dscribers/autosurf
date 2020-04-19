@@ -8,16 +8,21 @@
       "module": "dist/autosurf.es.js",
       "browser": "dist/autosurf.min.js"
     },
-    "surf": {
-      "main": "dist/surf.js",
-      "module": "dist/surf.es.js",
-      "browser": "dist/surf.min.js"
+    "websurf": {
+      "main": "dist/websurf.js",
+      "module": "dist/websurf.es.js",
+      "browser": "dist/websurf.min.js"
+    },
+    "base_adapter": {
+      "main": "dist/base-adapter.js",
+      "module": "dist/base-adapter.es.js",
+      "browser": "dist/base-adapter.min.js"
     }
   },
   "repository": "https://github.com/dscribers/autosurf",
   "author": "Ezra Obiwale",
   "license": "MIT",
-  "main": "dist/index.js",
+  "main": "dist/autosurf.js",
   "devDependencies": {
     "@babel/core": "^7.8.3",
     "@babel/plugin-proposal-private-methods": "^7.8.3",

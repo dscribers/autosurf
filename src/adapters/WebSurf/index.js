@@ -1,7 +1,7 @@
-import AdapterBase from '../AdapterBase'
+import BaseAdapter from '../BaseAdapter'
 import Surfer from './Surfer'
 
-class WebSurf extends AdapterBase {
+class WebSurf extends BaseAdapter {
   #storeName = location.origin + '_atsrf'
   #needsBackup = false
   #reloaded = false

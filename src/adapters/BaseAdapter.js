@@ -1,4 +1,4 @@
-export default class AdapterBase {
+export default class BaseAdapter {
 
   /**
    * Backs up the application data. Should be called before the page reloads

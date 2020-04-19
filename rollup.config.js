@@ -30,18 +30,37 @@ export default [
     plugins: [resolve(), commonjs(), babelled, terser()],
   },
   {
-    input: 'src/Surf.js',
+    input: 'src/adapters/WebSurf/index.js',
     output: [
       {
-        file: pkg.rollup.surf.main,
+        file: pkg.rollup.websurf.main,
         format: 'cjs',
       },
       {
-        file: pkg.rollup.surf.module,
+        file: pkg.rollup.websurf.module,
         format: 'es',
       },
       {
-        file: pkg.rollup.surf.browser,
+        file: pkg.rollup.websurf.browser,
+        format: 'iife',
+        name: 'Surf',
+      },
+    ],
+    plugins: [resolve(), commonjs(), babelled, terser()],
+  },
+  {
+    input: 'src/adapters/AdapterBase.js',
+    output: [
+      {
+        file: pkg.rollup.base_adapter.main,
+        format: 'cjs',
+      },
+      {
+        file: pkg.rollup.base_adapter.module,
+        format: 'es',
+      },
+      {
+        file: pkg.rollup.base_adapter.browser,
         format: 'iife',
         name: 'Surf',
       },

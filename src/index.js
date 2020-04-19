@@ -1,4 +1,4 @@
-import AdapterBase from './adapters/AdapterBase'
+import BaseAdapter from './adapters/BaseAdapter'
 import WebSurf from './adapters/WebSurf'
 
 export default class AutoSurf {
@@ -8,7 +8,7 @@ export default class AutoSurf {
   /**
    * @param {object} config The options. Keys include:
    * delayBetweenSchedules (int): The millisecond delay between schedules. Defaults to 500
-   * @param {AdapterBase} Adapter A subclass of AdapterBase
+   * @param {BaseAdapter} Adapter A subclass of BaseAdapter
    */
   static constructor(config = {}, Adapter) {
     this.version = '1.0.0'
@@ -17,8 +17,8 @@ export default class AutoSurf {
       Adapter = WebSurf
     } else if (typeof Adapter !== 'function') {
       throw new Error('Adapter must be a class')
-    } else if (!(new Adapter() instanceof AdapterBase)) {
-      throw new Error('Adapter must be a subclass of AdapterBase')
+    } else if (!(new Adapter() instanceof BaseAdapter)) {
+      throw new Error('Adapter must be a subclass of BaseAdapter')
     }
 
     this.#Surf = Adapter

@@ -1,4 +1,10 @@
 export default class AdapterBase {
+
+  /**
+   * Backs up the application data. Should be called before the page reloads
+   */
+  static backup() {}
+
   /**
    * Checks that the given attribute of the current item contains the given text
    *
@@ -81,7 +87,15 @@ export default class AdapterBase {
   }
 
   /**
+   * Clears any backed up application data
+   *
+   * @param {object} $autosurf An instance of AutoSurf
+   */
+  static clearBackup($autosurf) {}
+
+  /**
    * Clicks on the current item
+   *
    * @param {*} selector The selector of the target html element
    */
   static doClick(selector) {
@@ -97,10 +111,10 @@ export default class AdapterBase {
 
   /**
    * Pauses execution for the given miliseconds
-   * @param {*} selector The selector of the target html element
+   *
    * @param {int} milliseconds
    */
-  static doWait(selector, milliseconds) {
+  static doWait(milliseconds) {
     this.#defaultResponse()
   }
 
@@ -113,6 +127,7 @@ export default class AdapterBase {
 
   /**
    * Focuses on the current item
+   *
    * @param {*} selector The selector of the target html element
    */
   static doFocus(selector) {
@@ -121,10 +136,10 @@ export default class AdapterBase {
 
   /**
    * Navigate to the given url
-   * @param {*} selector The selector of the target html element
+   *
    * @param {string} url
    */
-  static doGoto(selector, url) {
+  static doGoto(url) {
     this.#defaultResponse()
   }
 
@@ -137,6 +152,7 @@ export default class AdapterBase {
 
   /**
    * Submits the form (self or closest parent) without clicking on the submit button
+   *
    * @param {*} selector The selector of the target html element
    */
   static doSubmitForm(selector) {
@@ -145,12 +161,29 @@ export default class AdapterBase {
 
   /**
    * Types the given string into the current item
+   *
    * @param {*} selector The selector of the target html element
    * @param {string} str The string to type
+   * @param {integer} speed The speed at which to type
    */
-  static doType(selector, str, speed = 100) {
+  static doType(selector, str, speed = 500) {
     this.#defaultResponse()
   }
+
+  /**
+   * Indicates whether the framework requires backing up
+   *
+   * @param {object} $autosurf An instance of AutoSurf
+   * @param {bool} status
+   */
+  static needsBackup($autosurf, status) {}
+
+  /**
+   * Called to inform AutoSurf that parent code is ready
+   *
+   * @param {object} $autosurf An instance of AutoSurf
+   */
+  static ready ($autosurf) {}
 
   #static defaultResponse () {
     throw new Error()

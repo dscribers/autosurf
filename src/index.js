@@ -1,5 +1,5 @@
 import AdapterBase from './adapters/AdapterBase'
-import Surf from './adapters/Surf'
+import WebSurf from './adapters/WebSurf'
 
 export default class AutoSurf {
   static #STATUS_SUCCESS = true
@@ -14,7 +14,7 @@ export default class AutoSurf {
     this.version = '1.0.0'
 
     if (!Adapter) {
-      Adapter = Surf
+      Adapter = WebSurf
     } else if (typeof Adapter !== 'function') {
       throw new Error('Adapter must be a class')
     } else if (!(new Adapter() instanceof AdapterBase)) {
@@ -28,13 +28,10 @@ export default class AutoSurf {
       ...config,
     }
 
-    this.#needsBackup = true
-    this.#storeName = location.origin + '_atsrf'
     this.#actionables = []
     this.#schedules = []
     this.#results = []
     this.#events = {}
-    this.#reloaded = false
     this.#allEvents = [
       'actionError',
       'actionFailed',
@@ -63,9 +60,7 @@ export default class AutoSurf {
    * Backs up the application data. Should be called before the page reloads
    */
   backup() {
-    if (this.#needsBackup) {
-      localStorage.setItem(this.#storeName, JSON.stringify(this))
-    }
+    this.#Surf.backup(this, ...arguments)
 
     return this
   }
@@ -112,7 +107,7 @@ export default class AutoSurf {
    * Clears any backed up application data
    */
   clearBackup() {
-    localStorage.removeItem(this.#storeName)
+    this.#Surf.clearBackup(this, ...arguments)
 
     return this
   }
@@ -190,36 +185,9 @@ export default class AutoSurf {
 
   /**
    * Called to inform AutoSurf that parent code is ready
-   *
-   * @param {function} beforeCallback
-   * @param {function} afterCallback
    */
-  ready(beforeCallback, afterCallback) {
-    let stored = localStorage.getItem(this.#storeName)
-
-    if (stored) {
-      stored = JSON.parse(stored)
-
-      for (let key in stored) {
-        this[key] = stored[key]
-      }
-
-      localStorage.removeItem(this.#storeName)
-
-      if (typeof beforeCallback === 'function') {
-        beforeCallback(true)
-      }
-
-      this.#reloaded = true
-      this.#waiting(false)
-      this.#done()
-    } else if (typeof beforeCallback === 'function') {
-      beforeCallback(false)
-    }
-
-    if (typeof afterCallback === 'function') {
-      afterCallback(stored !== null)
-    }
+  ready() {
+    this.#Surf.ready(this, ...arguments)
 
     return this
   }
@@ -555,7 +523,7 @@ export default class AutoSurf {
       this.#startWorking()
 
       try {
-        this.#Surf.goto(selector, ...urlParams)
+        this.#Surf.goto(...urlParams)
 
         callback(this.STATUS_SUCCESS)
       } catch (e) {
@@ -576,23 +544,13 @@ export default class AutoSurf {
     try {
       this.#waiting()
 
-      this.#Surf.wait(selector, ...millisecondsParam)
+      this.#Surf.wait(...millisecondsParam)
 
       this.#waiting(false)
 
       callback(this.STATUS_SUCCESS)
     } catch (e) {
       callback(this.STATUS_ERROR)
-    }
-  }
-
-  #handleDoWaitTillPageLoads(callback) {
-    if (this.#reloaded) {
-      this.#reloaded = false
-
-      callback(this.STATUS_SUCCESS)
-    } else {
-      setTimeout(() => this.#handleDoWaitTillPageLoads(callback), 500)
     }
   }
 
@@ -626,14 +584,14 @@ export default class AutoSurf {
         this.#stopWorking()
 
         // trigger done
-        this.#needsBackup = false
+        this.#Surf.needsBackup(false)
         this.trigger('done', this.#results)
       }
 
       return this
     }
 
-    this.#needsBackup = true
+    this.#Surf.needsBackup(true)
     setTimeout(
       () => {
         this.#currentSchedule++

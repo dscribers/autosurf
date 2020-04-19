@@ -27,7 +27,7 @@ export default [
         name: 'AutoSurf',
       },
     ],
-    plugins: [resolve(), commonjs(), babelled, terser()],
+    plugins: [resolve(), babelled, commonjs(), terser()],
   },
   {
     input: 'src/adapters/WebSurf/index.js',
@@ -46,10 +46,10 @@ export default [
         name: 'Surf',
       },
     ],
-    plugins: [resolve(), commonjs(), babelled, terser()],
+    plugins: [resolve(), babelled, commonjs(), terser()],
   },
   {
-    input: 'src/adapters/AdapterBase.js',
+    input: 'src/adapters/BaseAdapter.js',
     output: [
       {
         file: pkg.rollup.base_adapter.main,
@@ -65,6 +65,6 @@ export default [
         name: 'Surf',
       },
     ],
-    plugins: [resolve(), commonjs(), babelled, terser()],
+    plugins: [resolve(), babelled, commonjs(), terser()],
   },
 ]

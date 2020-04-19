@@ -5,6 +5,45 @@ export default class AutoSurf {
   static #STATUS_SUCCESS = true
   static #STATUS_ERROR = false
 
+  #Surf = null
+
+  #config = {
+    delayBetweenSchedules: 500,
+  }
+
+  #actionables = []
+  #schedules = []
+  #results = []
+  #events = {}
+  #allEvents = [
+    'actionError',
+    'actionFailed',
+    'actionSuccess',
+    'done',
+    'paused',
+    'restarting',
+    'resumed',
+    'scheduleFinish',
+    'scheduleInit',
+    'scheduleStart',
+    'workStart',
+    'workStop',
+  ]
+  #noSelectorActions = ['wait', 'pause', 'refresh', 'goto', 'waitTillPageLoads']
+
+  #isDone = false
+  #isLoading = false
+  #isPaused = false
+  #isReady = false
+  #isWorking = false
+  #isWaiting = false
+
+  #current = null
+  #currentAction = null
+  #currentIndex = null
+  #currentSchedule = null
+  #toResume = null
+
   /**
    * @param {object} config The options. Keys include:
    * delayBetweenSchedules (int): The millisecond delay between schedules. Defaults to 500
@@ -23,37 +62,10 @@ export default class AutoSurf {
 
     this.#Surf = Adapter
 
-    this.config = {
+    this.#config = {
       delayBetweenSchedules: 500,
       ...config,
     }
-
-    this.#actionables = []
-    this.#schedules = []
-    this.#results = []
-    this.#events = {}
-    this.#allEvents = [
-      'actionError',
-      'actionFailed',
-      'actionSuccess',
-      'done',
-      'paused',
-      'restarting',
-      'resumed',
-      'scheduleFinish',
-      'scheduleInit',
-      'scheduleStart',
-      'working',
-      'workStart',
-      'workStop',
-    ]
-    this.#noSelectorActions = [
-      'wait',
-      'pause',
-      'refresh',
-      'goto',
-      'waitTillPageLoads',
-    ]
   }
 
   /**
@@ -166,12 +178,12 @@ export default class AutoSurf {
    * @returns {AutoSurf}
    */
   pause() {
-    if (this.#paused) {
+    if (this.#isPaused) {
       return this
     }
 
-    this.#ready = false
-    this.#paused = true
+    this.#isReady = false
+    this.#isPaused = true
 
     this.trigger('paused', {
       scheduleIndex: this.#currentSchedule,
@@ -186,8 +198,15 @@ export default class AutoSurf {
   /**
    * Called to inform AutoSurf that parent code is ready
    */
-  ready() {
-    this.#Surf.ready(this, ...arguments)
+  ready(callback) {
+    this.#Surf.ready(this, (isReloaded) => {
+      if (isReloaded) {
+        this.#waiting(false)
+        this.#handled(this.STATUS_SUCCESS)
+      }
+
+      callback(isReloaded)
+    })
 
     return this
   }
@@ -197,7 +216,7 @@ export default class AutoSurf {
    * @returns {AutoSurf}
    */
   restart() {
-    if (this.#loading) {
+    if (this.#isLoading) {
       setTimeout(() => this.restart(), 1000)
     }
 
@@ -206,7 +225,7 @@ export default class AutoSurf {
     this.#parseSchedules()
 
     this.#currentSchedule = -1
-    this.#done = true
+    this.#isDone = true
     this.#results = []
 
     this.#nextSchedule()
@@ -219,12 +238,12 @@ export default class AutoSurf {
    * @returns {AutoSurf}
    */
   resume() {
-    if (!this.#paused) {
+    if (!this.#isPaused) {
       return this
     }
 
-    this.#ready = true
-    this.#paused = false
+    this.#isReady = true
+    this.#isPaused = false
 
     if (this.#toResume === 2) {
       this.#checkNext()
@@ -249,14 +268,14 @@ export default class AutoSurf {
    */
   start(config = {}) {
     // Don't continue until loading is done
-    if (this.#loading) {
+    if (this.#isLoading) {
       setTimeout(() => this.start(config, false), 1000)
 
       return this
     }
 
     this.#currentSchedule = -1
-    this.#done = true
+    this.#isDone = true
     this.#config = { ...this.#config, ...config }
 
     this.#nextSchedule()
@@ -293,8 +312,8 @@ export default class AutoSurf {
       }
 
       if (
-        this.#ready &&
-        !this.#loading &&
+        this.#isReady &&
+        !this.#isLoading &&
         this.#actionables[this.#currentSchedule]
       ) {
         if (this.#actionables[this.#currentSchedule].toCheck.length) {
@@ -329,20 +348,20 @@ export default class AutoSurf {
               _action = action.replace(/not/i, '')
             }
 
-            this.#ready = false
+            this.#isReady = false
             this.#handle(_action, params, selector, (status) =>
               this.#verify(action, status)
             )
           }
         } else {
-          if (!this.#done) {
+          if (!this.#isDone) {
             this.trigger('scheduleFinish', {
               scheduleIndex: this.#currentSchedule,
               lastSchedule:
                 this.#actionables.length === this.#currentSchedule + 1,
             })
           }
-          this.#done = true
+          this.#isDone = true
           this.#nextSchedule()
         }
       } else {
@@ -350,26 +369,10 @@ export default class AutoSurf {
       }
     } catch (e) {
       this.#fail()
-      this.#ready = true
+      this.#isReady = true
       this.#error(e.message)
       this.#checkNext()
     }
-  }
-
-  #done(status) {
-    if (status === this.STATUS_SUCCESS) {
-      this.#success()
-    } else {
-      this.#error()
-    }
-
-    if (!this.#paused && !this.#done && !this.#waiting) {
-      this.#ready = true
-      this.#loading = false
-      this.#doNext()
-    }
-
-    return this
   }
 
   #doNext(fresh) {
@@ -383,8 +386,8 @@ export default class AutoSurf {
       }
 
       if (
-        this.#ready &&
-        !this.#loading &&
+        this.#isReady &&
+        !this.#isLoading &&
         this.#actionables[this.#currentSchedule]
       ) {
         if (this.#actionables[this.#currentSchedule].toDo.length) {
@@ -414,10 +417,10 @@ export default class AutoSurf {
             const { action, params, selector } = this.#current
 
             this.#handle(action, params, selector, (status) =>
-              this.#done(status)
+              this.#handled(status)
             )
 
-            this.#ready = false
+            this.#isReady = false
           }
         } else {
           // nothing to do
@@ -506,6 +509,22 @@ export default class AutoSurf {
     }
   }
 
+  #handled(status) {
+    if (status === this.STATUS_SUCCESS) {
+      this.#success()
+    } else {
+      this.#error()
+    }
+
+    if (!this.#isPaused && !this.#isDone && !this.#isWaiting) {
+      this.#isReady = true
+      this.#isLoading = false
+      this.#doNext()
+    }
+
+    return this
+  }
+
   #handleDoGoto(callback, selector, urlParams) {
     if (!urlParams.length) {
       return callback(this.STATUS_ERROR)
@@ -513,17 +532,16 @@ export default class AutoSurf {
 
     if (this.#currentSchedule === undefined) {
       // only load page if started
-      setTimeout(() => this.#goto(callback, selector, urlParams), 1000)
+      setTimeout(() => this.#handleDoGoto(callback, selector, urlParams), 1000)
     } else {
-      this.#url = urlParams
-      this.#ready = false
-      this.#loading = true
+      this.#isReady = false
+      this.#isLoading = true
 
       this.backup()
       this.#startWorking()
 
       try {
-        this.#Surf.goto(...urlParams)
+        this.#Surf.doGoto(...urlParams)
 
         callback(this.STATUS_SUCCESS)
       } catch (e) {
@@ -544,7 +562,7 @@ export default class AutoSurf {
     try {
       this.#waiting()
 
-      this.#Surf.wait(...millisecondsParam)
+      this.#Surf.doWait(...millisecondsParam)
 
       this.#waiting(false)
 
@@ -567,7 +585,7 @@ export default class AutoSurf {
    * @returns {AutoSurf}
    */
   #nextSchedule() {
-    if (!this.#done) {
+    if (!this.#isDone) {
       return this
     }
 
@@ -578,8 +596,8 @@ export default class AutoSurf {
     if (!this.#hasNext()) {
       if (this.#current !== null) {
         this.#current = null
-        this.#ready = false
-        this.#done = true
+        this.#isReady = false
+        this.#isDone = true
 
         this.#stopWorking()
 
@@ -595,8 +613,8 @@ export default class AutoSurf {
     setTimeout(
       () => {
         this.#currentSchedule++
-        this.#ready = true
-        this.#done = false
+        this.#isReady = true
+        this.#isDone = false
 
         this.trigger('scheduleStart', {
           scheduleIndex: this.#currentSchedule,
@@ -628,7 +646,7 @@ export default class AutoSurf {
       schedule.check.forEach((toCheck) => this.#runCheck(toCheck, i))
     })
 
-    this.#loading = false
+    this.#isLoading = false
 
     return this
   }
@@ -692,14 +710,12 @@ export default class AutoSurf {
     })
 
     this.#working()
-    this.#lvlInt = setInterval(() => this.#working(), 100)
 
     return this
   }
 
   #stopWorking() {
-    clearInterval(this.#lvlInt)
-    this.#working = false
+    this.#isWorking = false
     this.trigger('workStop', {
       scheduleIndex: this.#currentSchedule,
       actionIndex: this.#currentIndex,
@@ -766,30 +782,20 @@ export default class AutoSurf {
       this.#error(e.message)
     }
 
-    this.#ready = true
+    this.#isReady = true
     this.#checkNext()
 
     return this
   }
 
   #waiting(status) {
-    this.#waiting = status !== undefined ? status : true
+    this.#isWaiting = status !== undefined ? status : true
 
     return this
   }
 
   #working() {
-    this.#wk = this.#wk || 0
-    const lvls = ['.', '..', '...', '....']
-
-    this.trigger('working', { text: lvls[this.#wk] })
-    this.#wk++
-
-    if (this.#wk > 3) {
-      this.#wk = 0
-    }
-
-    this.#working = true
+    this.#isWorking = true
 
     return this
   }

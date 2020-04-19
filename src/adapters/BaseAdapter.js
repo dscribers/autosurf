@@ -1,5 +1,4 @@
 export default class BaseAdapter {
-
   /**
    * Backs up the application data. Should be called before the page reloads
    */
@@ -182,10 +181,11 @@ export default class BaseAdapter {
    * Called to inform AutoSurf that parent code is ready
    *
    * @param {object} $autosurf An instance of AutoSurf
+   * @param {function} callback The function to call. Receives boolean param which indicates whether the page was reloaded or not.
    */
-  static ready ($autosurf) {}
+  static ready($autosurf, callback = () => {}) {}
 
-  #static defaultResponse () {
+  static #defaultResponse() {
     throw new Error()
   }
 }

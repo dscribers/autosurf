@@ -1,10 +1,10 @@
 import BaseAdapter from '../BaseAdapter'
 import Surfer from './Surfer'
 
-class WebSurf extends BaseAdapter {
+export default class WebSurf extends BaseAdapter {
   #storeName = location.origin + '_atsrf'
   #needsBackup = false
-  #reloaded = false
+  #isReloaded = false
 
   #maxLoadWaitTime = 30000 // 30 seconds
   #waitPollTime = 500
@@ -119,14 +119,14 @@ class WebSurf extends BaseAdapter {
    * @inheritdoc
    */
   static doWaitTillPageLoads() {
-    if (this.#reloaded) {
-      this.#reloaded = false
+    if (this.#isReloaded) {
+      this.#isReloaded = false
     } else {
       if (this.#waited >= this.#maxLoadWaitTime) {
         throw new Error()
       }
 
-      setTimeout(() => this.#doWaitTillPageLoads(), this.#waitPollTime)
+      setTimeout(() => this.doWaitTillPageLoads(), this.#waitPollTime)
       this.#waited += this.#waitPollTime
     }
   }
@@ -205,7 +205,7 @@ class WebSurf extends BaseAdapter {
   /**
    * @inheritdoc
    */
-  static ready($autosurf, beforeCallback, afterCallback) {
+  static ready($autosurf, callback) {
     let stored = localStorage.getItem(this.#storeName)
 
     if (stored) {
@@ -217,19 +217,11 @@ class WebSurf extends BaseAdapter {
 
       localStorage.removeItem(this.#storeName)
 
-      if (typeof beforeCallback === 'function') {
-        beforeCallback(true)
-      }
-
-      this.#reloaded = true
-      $autosurf.#waiting(false)
-      $autosurf.#done()
-    } else if (typeof beforeCallback === 'function') {
-      beforeCallback(false)
+      this.#isReloaded = true
     }
 
-    if (typeof afterCallback === 'function') {
-      afterCallback(stored !== null)
+    if (typeof callback === 'function') {
+      callback(this.#isReloaded)
     }
 
     return this

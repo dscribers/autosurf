@@ -25,6 +25,7 @@
   "main": "dist/autosurf.js",
   "devDependencies": {
     "@babel/core": "^7.8.3",
+    "@babel/plugin-proposal-class-properties": "^7.8.3",
     "@babel/plugin-proposal-private-methods": "^7.8.3",
     "@babel/preset-env": "^7.8.3",
     "@rollup/plugin-commonjs": "^11.0.1",

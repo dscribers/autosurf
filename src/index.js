@@ -35,6 +35,7 @@ export default class AutoSurf {
   #isLoading = false
   #isPaused = false
   #isReady = false
+  #isReadyCallback = () => {}
   #isWorking = false
   #isWaiting = false
 
@@ -66,15 +67,8 @@ export default class AutoSurf {
       delayBetweenSchedules: 500,
       ...config,
     }
-  }
 
-  /**
-   * Backs up the application data. Should be called before the page reloads
-   */
-  backup() {
-    this.#Surf.backup(this, ...arguments)
-
-    return this
+    this.#initAdapter()
   }
 
   /** Checks the result of everything done
@@ -113,15 +107,6 @@ export default class AutoSurf {
    */
   check(prop) {
     return this.#runCheck(prop, 0)
-  }
-
-  /**
-   * Clears any backed up application data
-   */
-  clearBackup() {
-    this.#Surf.clearBackup(this, ...arguments)
-
-    return this
   }
 
   /** Executes the given action
@@ -197,16 +182,10 @@ export default class AutoSurf {
 
   /**
    * Called to inform AutoSurf that parent code is ready
+   * @param {function} callback The function to call when everything is ready
    */
   ready(callback) {
-    this.#Surf.ready(this, (isReloaded) => {
-      if (isReloaded) {
-        this.#waiting(false)
-        this.#handled(this.STATUS_SUCCESS)
-      }
-
-      callback(isReloaded)
-    })
+    this.#isReadyCallback = callback
 
     return this
   }
@@ -281,6 +260,28 @@ export default class AutoSurf {
     this.#nextSchedule()
 
     return this
+  }
+
+  /**
+   * @inheritdoc
+   */
+  toJSON() {
+    return {
+      _actionables: this.#actionables,
+      _schedules: this.#schedules,
+      _results: this.#results,
+      _isDone: this.#isDone,
+      _isLoading: this.#isLoading,
+      _isPaused: this.#isPaused,
+      _isReady: this.#isReady,
+      _isWaiting: this.#isWaiting,
+      _isWorking: this.#isWorking,
+      _current: this.#current,
+      _currentAction: this.#currentAction,
+      _currentIndex: this.#currentIndex,
+      _currentSchedule: this.#currentSchedule,
+      _toResume: this.#actionables,
+    }
   }
 
   /**
@@ -572,18 +573,34 @@ export default class AutoSurf {
     }
   }
 
-  /**
-   * Checks if there's a next schedule after the current one
-   * @returns {boolean}
-   */
   #hasNext() {
     return this.#actionables[this.#currentSchedule + 1] !== undefined
   }
 
-  /**
-   * Executes the next schedule
-   * @returns {AutoSurf}
-   */
+  #initAdapter() {
+    this.#Surf.init((fromStore) => {
+      if (fromStore) {
+        const allowedKeys = Object.keys(this.toJSON())
+
+        for (let key in fromStore) {
+          if (!allowedKeys.contains(key)) {
+            return
+          }
+
+          if (!this.hasOwnProperty(key)) {
+            if (key.startsWith('_')) {
+              key = key.replace('_', '#')
+            }
+          }
+
+          this[key] = fromStore[key]
+        }
+      }
+
+      this.#isReadyCallback(!!fromStore)
+    })
+  }
+
   #nextSchedule() {
     if (!this.#isDone) {
       return this
@@ -602,14 +619,13 @@ export default class AutoSurf {
         this.#stopWorking()
 
         // trigger done
-        this.#Surf.needsBackup(false)
+        this.#Surf.quit()
         this.trigger('done', this.#results)
       }
 
       return this
     }
 
-    this.#Surf.needsBackup(true)
     setTimeout(
       () => {
         this.#currentSchedule++

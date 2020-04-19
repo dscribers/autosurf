@@ -3,7 +3,7 @@ import Surfer from './Surfer'
 
 export default class WebSurf extends BaseAdapter {
   #storeName = location.origin + '_atsrf'
-  #needsBackup = false
+  #shouldBackup = false
   #isReloaded = false
 
   #maxLoadWaitTime = 30000 // 30 seconds
@@ -13,10 +13,46 @@ export default class WebSurf extends BaseAdapter {
   /**
    * @inheritdoc
    */
-  static backup($autosurf) {
-    if (this.#needsBackup) {
-      localStorage.setItem(this.#storeName, JSON.stringify($autosurf))
+  static init($autosurf, callback) {
+    const oldLoadFunc = window.onload
+
+    window.onload = () => {
+      if (typeof oldLoadFunc === 'function') {
+        oldLoadFunc()
+      }
+
+      let stored = localStorage.getItem(this.#storeName)
+
+      if (stored) {
+        stored = JSON.parse(stored)
+
+        localStorage.removeItem(this.#storeName)
+
+        this.#isReloaded = true
+      }
+
+      if (typeof callback === 'function') {
+        callback(stored)
+      }
     }
+
+    const oldBeforeUnloadFunc = window.onbeforeunload
+
+    window.onbeforeunload = () => {
+      if (typeof oldBeforeUnloadFunc === 'function') {
+        oldBeforeUnloadFunc()
+      }
+
+      this.#backup($autosurf)
+    }
+  }
+
+  /**
+   * @inheritdoc
+   */
+  static quit($autosurf) {
+    this.#needsBackup(false)
+    this.#clearBackup()
   }
 
   /**
@@ -78,17 +114,12 @@ export default class WebSurf extends BaseAdapter {
   /**
    * @inheritdoc
    */
-  static clearBackup($autosurf) {
-    localStorage.removeItem(this.#storeName)
-  }
-
-  /**
-   * @inheritdoc
-   */
   static doClick(selector) {
     if (selector) {
       new Surfer(select).click()
+      this.acted()
     } else {
+      this.acted()
       throw new Error()
     }
   }
@@ -99,7 +130,9 @@ export default class WebSurf extends BaseAdapter {
   static doGoBack() {
     if (window.history) {
       window.history.back()
+      this.acted()
     } else {
+      this.acted()
       throw new Error()
     }
   }
@@ -110,7 +143,9 @@ export default class WebSurf extends BaseAdapter {
   static doWait(milliseconds) {
     if (milliseconds) {
       setTimeout(() => {}, milliseconds)
+      this.acted()
     } else {
+      this.acted()
       throw new Error()
     }
   }
@@ -121,8 +156,10 @@ export default class WebSurf extends BaseAdapter {
   static doWaitTillPageLoads() {
     if (this.#isReloaded) {
       this.#isReloaded = false
+      this.acted()
     } else {
       if (this.#waited >= this.#maxLoadWaitTime) {
+        this.acted()
         throw new Error()
       }
 
@@ -142,7 +179,10 @@ export default class WebSurf extends BaseAdapter {
       item.style.color = '#0e90d2'
       item.style.backgroundColor = '#ffffff'
       item.focus()
+
+      this.acted()
     } else {
+      this.acted()
       throw new Error()
     }
   }
@@ -151,6 +191,7 @@ export default class WebSurf extends BaseAdapter {
    * @inheritdoc
    */
   static doGoto(url) {
+    this.acted()
     location.href = url
   }
 
@@ -158,6 +199,7 @@ export default class WebSurf extends BaseAdapter {
    * @inheritdoc
    */
   static doRefresh() {
+    this.acted()
     location.reload()
   }
 
@@ -167,7 +209,9 @@ export default class WebSurf extends BaseAdapter {
   static doSubmitForm(selector) {
     if (selector) {
       new Surfer(selector).item.submit()
+      this.acted()
     } else {
+      this.acted()
       throw new Error()
     }
   }
@@ -186,50 +230,41 @@ export default class WebSurf extends BaseAdapter {
 
         if (++index < str.length) {
           setTimeout(() => type(), speed)
+        } else {
+          this.acted()
         }
       }
 
       type()
     } else {
+      this.acted()
       throw new Error()
     }
   }
 
-  /**
-   * @inheritdoc
-   */
-  static needsBackup($autosurf, status) {
-    this.#needsBackup = status
+  static #acted() {
+    this.#needsBackup(true)
   }
 
-  /**
-   * @inheritdoc
-   */
-  static ready($autosurf, callback) {
-    let stored = localStorage.getItem(this.#storeName)
-
-    if (stored) {
-      stored = JSON.parse(stored)
-
-      for (let key in stored) {
-        this[key] = stored[key]
-      }
-
-      localStorage.removeItem(this.#storeName)
-
-      this.#isReloaded = true
+  static #backup($autosurf) {
+    if (this.#shouldBackup) {
+      localStorage.setItem(this.#storeName, JSON.stringify($autosurf))
     }
-
-    if (typeof callback === 'function') {
-      callback(this.#isReloaded)
-    }
-
-    return this
   }
 
   static #checked(status) {
+    this.#acted()
+
     if (!status) {
       throw new Error()
     }
+  }
+
+  static #clearBackup() {
+    localStorage.removeItem(this.#storeName)
+  }
+
+  static #needsBackup(status) {
+    this.#shouldBackup = status
   }
 }

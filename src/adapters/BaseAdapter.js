@@ -1,8 +1,18 @@
 export default class BaseAdapter {
   /**
-   * Backs up the application data. Should be called before the page reloads
+   * Called to inform AutoSurf that parent code is ready
+   *
+   * @param {object} $autosurf An instance of AutoSurf
+   * @param {function} callback The function to call. Receives boolean param which indicates whether the page was reloaded or not.
    */
-  static backup() {}
+  static init($autosurf, callback = () => {}) {}
+
+  /**
+   * Called when AutoSurf is quitting
+   *
+   * @param {object} $autosurf An instance of AutoSurf
+   */
+  static quit($autosurf) {}
 
   /**
    * Checks that the given attribute of the current item contains the given text
@@ -86,13 +96,6 @@ export default class BaseAdapter {
   }
 
   /**
-   * Clears any backed up application data
-   *
-   * @param {object} $autosurf An instance of AutoSurf
-   */
-  static clearBackup($autosurf) {}
-
-  /**
    * Clicks on the current item
    *
    * @param {*} selector The selector of the target html element
@@ -168,22 +171,6 @@ export default class BaseAdapter {
   static doType(selector, str, speed = 500) {
     this.#defaultResponse()
   }
-
-  /**
-   * Indicates whether the framework requires backing up
-   *
-   * @param {object} $autosurf An instance of AutoSurf
-   * @param {bool} status
-   */
-  static needsBackup($autosurf, status) {}
-
-  /**
-   * Called to inform AutoSurf that parent code is ready
-   *
-   * @param {object} $autosurf An instance of AutoSurf
-   * @param {function} callback The function to call. Receives boolean param which indicates whether the page was reloaded or not.
-   */
-  static ready($autosurf, callback = () => {}) {}
 
   static #defaultResponse() {
     throw new Error()

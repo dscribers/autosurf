@@ -1,6 +1,6 @@
 export default class BaseAdapter {
   /**
-   * Called to inform AutoSurf that parent code is ready
+   * Called to initialize the adapter
    *
    * @param {object} $autosurf An instance of AutoSurf
    * @param {function} callback The function to call. Receives boolean param which indicates whether the page was reloaded or not.
@@ -8,7 +8,7 @@ export default class BaseAdapter {
   static init($autosurf, callback = () => {}) {}
 
   /**
-   * Called when AutoSurf is quitting
+   * Called when AutoSurf finishes all executions
    *
    * @param {object} $autosurf An instance of AutoSurf
    */

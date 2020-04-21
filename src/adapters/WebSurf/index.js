@@ -79,7 +79,7 @@ export default class WebSurf extends BaseAdapter {
   /**
    * @inheritdoc
    */
-  static checkIsOn(selector, url) {
+  static checkIsOn(url) {
     this.#checked(document.location.href === url.toLowerCase())
   }
 

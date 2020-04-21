@@ -16,16 +16,16 @@ export default class AutoSurf {
   #results = []
   #events = {}
   #allEvents = [
+    'actionError',
+    'actionFailed',
+    'actionStart',
+    'actionSuccess',
     'done',
     'paused',
     'resumed',
     'scheduleFinish',
     'scheduleInit',
     'scheduleStart',
-    'workError',
-    'workFailed',
-    'workStart',
-    'workSuccess',
   ]
   #noSelectorActions = ['wait', 'pause', 'refresh', 'goto', 'waitTillPageLoads']
 
@@ -68,65 +68,6 @@ export default class AutoSurf {
     }
   }
 
-  /** Checks the result of everything done
-   * @param {object} prop  Keys include:
-   *
-   * selector (string) - The element to check e.g. input#firstName, div#nav >
-   * ul li:last-child
-   * action (string) - The check to execute. This may be any of:
-   * 	- isOn - Checks if the page's location IS the given parameter,
-   * 	- IsNotOn - Checks if the page's location IS NOT the given parameter,
-   * 	- valueIs - Checks the value of the given selector IS the given parameter,
-   * 	- ValueIsNot - Checks the value of the given selector IS NOT the given parameter,
-   * 	- valueContains - Checks the value of the given selector CONTAINS the given
-   * 	parameter,
-   * 	- notValueContains - Checks the value of the given selector DOES NOT CONTAIN the
-   * 	given parameter,
-   * 	- textIs - Checks if the text of the given selector IS the given parameter
-   * 	- TextIsNot - Checks if the text of the given selector IS NOT the given parameter
-   * 	- containsText - Checks the text of the given selector CONTAINS the given
-   * 	parameter
-   * 	- notContainsText - Checks the text of the given selector DOES NOT CONTAIN the
-   * 	 given parameter
-   * 	- attrIs - Checks if the given attribute of the given selector IS the given
-   * 	 parameter
-   * 	- AttrIsNot - Checks if the given attribute of the given selector IS NOT the given
-   * 	 parameter
-   * 	- containsAttr - Checks the given attribute of the given selector CONTAINS the
-   * 	given parameter
-   * 	- notContainsAttr - Checks the given attribute of the given selector DOES NOT
-   * 	CONTAIN the given parameter
-   * 	- exists - Check if the given selector EXISTS on the page
-   * 	- notExists - Check if the given selector EXISTS on the page
-   * params (array) -  Parameters for the given action
-   *
-   * @return {AutoSurf}
-   */
-  check(prop) {
-    return this.#runCheck(prop, 0)
-  }
-
-  /** Executes the given action
-   * @param {object} prop Keys include:
-   *
-   * selector (string) - The element to check e.g. input#firstName, div#nav >
-   * ul li:last-child
-   * action (string) - The action to execute. This may include:
-   *  - wait - Waits for the given MILISECONDS before continuing to the next action
-   *  - focus - Focuses on the given selector
-   *  - click - Clicks on the given selector
-   *  - type - Types the given TEXT in the given selector
-   *  - goBack - Navigates to previous page
-   *  - submitForm - Submits the given form selector without clicking on the
-   *  submit button
-   * params (array) - Parameters for the given action
-   *
-   * @return {AutoSurf}
-   */
-  do(prop) {
-    return this.#runDo(prop, 0)
-  }
-
   /**
    *
    * @param {string} event paused | resumed | work.start | work.stop | schedule.start |
@@ -144,12 +85,12 @@ export default class AutoSurf {
     return this
   }
 
-  parseFeature(obj) {
-    if (obj === undefined || typeof obj !== 'object') {
-      throw new Error('Parameter must be an object')
+  schedules(schedules) {
+    if (!Array.isArray(schedules)) {
+      throw new Error('Schedules must be an array')
     }
 
-    this.#schedules = obj.schedules
+    this.#schedules = schedules
     this.#parseSchedules()
 
     return this
@@ -428,7 +369,7 @@ export default class AutoSurf {
       this.#stopWorking()
 
       if (msg) {
-        this.#trigger('workError', {
+        this.#trigger('actionError', {
           scheduleIndex: this.#currentSchedule,
           actionIndex: this.#currentIndex,
           action: this.#currentAction,
@@ -464,7 +405,7 @@ export default class AutoSurf {
 
       // trigger failed
 
-      this.#trigger('workFailed', {
+      this.#trigger('actionFailed', {
         scheduleIndex: this.#currentSchedule,
         actionIndex: this.#currentIndex,
         action: this.#currentAction,
@@ -513,6 +454,16 @@ export default class AutoSurf {
     }
 
     return this
+  }
+
+  #handleCheckIsOn(callback, selector, urlParams) {
+    try {
+      this.#Surf.checkIsOn(...urlParams)
+
+      callback(this.STATUS_SUCCESS)
+    } catch (e) {
+      callback(this.STATUS_ERROR)
+    }
   }
 
   #handleDoGoto(callback, selector, urlParams) {
@@ -614,32 +565,24 @@ export default class AutoSurf {
       return this
     }
 
-    setTimeout(
-      () => {
-        this.#currentSchedule++
-        this.#isReady = true
-        this.#isDone = false
+    setTimeout(() => {
+      this.#currentSchedule++
+      this.#isReady = true
+      this.#isDone = false
 
-        this.#trigger('scheduleStart', {
-          scheduleIndex: this.#currentSchedule,
-          lastSchedule: this.#actionables.length === this.#currentSchedule + 1,
-        })
+      this.#trigger('scheduleStart', {
+        scheduleIndex: this.#currentSchedule,
+        lastSchedule: this.#actionables.length === this.#currentSchedule + 1,
+      })
 
-        this.#doNext(true)
-      },
-      this.#config.delayBetweenSchedules
-    )
+      this.#doNext(true)
+    }, this.#config.delayBetweenSchedules)
 
     return this
   }
 
   #parseSchedules() {
     this.#schedules.forEach((schedule, i) => {
-      this.#trigger('scheduleInit', {
-        schedule,
-        id: `_${i}`,
-      })
-
       schedule.do.forEach((toDo) => {
         if (schedule.url) {
           toDo['url'] = schedule.url
@@ -649,6 +592,11 @@ export default class AutoSurf {
       })
 
       schedule.check.forEach((toCheck) => this.#runCheck(toCheck, i))
+
+      this.#trigger('scheduleInit', {
+        schedule,
+        id: `_${i}`,
+      })
     })
 
     this.#isLoading = false
@@ -707,7 +655,7 @@ export default class AutoSurf {
       return this
     }
 
-    this.#trigger('workStart', {
+    this.#trigger('actionStart', {
       scheduleIndex: this.#currentSchedule,
       actionIndex: this.#currentIndex,
       action: this.#currentAction,
@@ -748,7 +696,7 @@ export default class AutoSurf {
 
       // trigger success
 
-      this.#trigger('workSuccess', {
+      this.#trigger('actionSuccess', {
         scheduleIndex: this.#currentSchedule,
         actionIndex: this.#currentIndex,
         action: this.#currentAction,

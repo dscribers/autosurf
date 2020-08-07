@@ -41,7 +41,7 @@ $surf
 ```js
 
 const $surf = new AutoSurf({
-  delayBetweenSchedules: 500, // milliseconds
+  autoAdvance: false, // Indicates whether to automatically advance to the next step or not. Defaults to TRUE
 })
 
 ```
@@ -93,9 +93,9 @@ The following is the list of events:
 
 Event | Description
 ------|------------
-actionError | Triggered when an error occurs while executing an action (do | check)
-actionFailed | Triggered when an action (do | check) fails
-actionStart | Triggered when starting to execute an action (do | check)
+actionError | Triggered when an error occurs while executing an action (do \| check)
+actionFailed | Triggered when an action (do \| check) fails
+actionStart | Triggered when starting to execute an action (do \| check)
 actionSuccess | Triggered when an action executes successfully
 done | Triggered when all the schedules have been executed
 paused | Triggered when execution is paused
@@ -154,6 +154,7 @@ $autosurf = new AutoSurf(config, MobileSurf)
 All methods in the BaseAdapter should be overridden as they are designed to fail by default.
 
 Method | Params | Description
+-------|--------|------------
 init | (AutoSurf) $autosurf, (function) callback | Called to initialize the adapter
 quite | (AutoSurf) $autosurf | Called when AutoSurf finishes all executions
 checkAttrContains | (string) selector, (string) attribute, (string) text | Called to check if an element's attributes contains the given text

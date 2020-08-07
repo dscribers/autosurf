@@ -50,7 +50,7 @@ export default class WebSurf extends BaseAdapter {
   /**
    * @inheritdoc
    */
-  static quit($autosurf) {
+  static quit ($autosurf) {
     this.#needsBackup(false)
     this.#clearBackup()
   }
@@ -117,9 +117,9 @@ export default class WebSurf extends BaseAdapter {
   static doClick(selector) {
     if (selector) {
       new Surfer(select).click()
-      this.acted()
+      this.#acted()
     } else {
-      this.acted()
+      this.#acted()
       throw new Error()
     }
   }
@@ -130,9 +130,9 @@ export default class WebSurf extends BaseAdapter {
   static doGoBack() {
     if (window.history) {
       window.history.back()
-      this.acted()
+      this.#acted()
     } else {
-      this.acted()
+      this.#acted()
       throw new Error()
     }
   }
@@ -143,9 +143,9 @@ export default class WebSurf extends BaseAdapter {
   static doWait(milliseconds) {
     if (milliseconds) {
       setTimeout(() => {}, milliseconds)
-      this.acted()
+      this.#acted()
     } else {
-      this.acted()
+      this.#acted()
       throw new Error()
     }
   }
@@ -156,10 +156,10 @@ export default class WebSurf extends BaseAdapter {
   static doWaitTillPageLoads() {
     if (this.#isReloaded) {
       this.#isReloaded = false
-      this.acted()
+      this.#acted()
     } else {
       if (this.#waited >= this.#maxLoadWaitTime) {
-        this.acted()
+        this.#acted()
         throw new Error()
       }
 
@@ -180,9 +180,9 @@ export default class WebSurf extends BaseAdapter {
       item.style.backgroundColor = '#ffffff'
       item.focus()
 
-      this.acted()
+      this.#acted()
     } else {
-      this.acted()
+      this.#acted()
       throw new Error()
     }
   }
@@ -191,7 +191,7 @@ export default class WebSurf extends BaseAdapter {
    * @inheritdoc
    */
   static doGoto(url) {
-    this.acted()
+    this.#acted()
     location.href = url
   }
 
@@ -199,7 +199,7 @@ export default class WebSurf extends BaseAdapter {
    * @inheritdoc
    */
   static doRefresh() {
-    this.acted()
+    this.#acted()
     location.reload()
   }
 
@@ -209,9 +209,9 @@ export default class WebSurf extends BaseAdapter {
   static doSubmitForm(selector) {
     if (selector) {
       new Surfer(selector).item.submit()
-      this.acted()
+      this.#acted()
     } else {
-      this.acted()
+      this.#acted()
       throw new Error()
     }
   }
@@ -219,7 +219,7 @@ export default class WebSurf extends BaseAdapter {
   /**
    * @inheritdoc
    */
-  static doType(selector, str, speed = 500) {
+  static doType (selector, str, speed = 500) {
     if (selector) {
       const item = new Surfer(selector)
 
@@ -233,13 +233,13 @@ export default class WebSurf extends BaseAdapter {
         if (++index < str.length) {
           setTimeout(() => type(), speed)
         } else {
-          this.acted()
+          this.#acted()
         }
       }
 
       type()
     } else {
-      this.acted()
+      this.#acted()
       throw new Error()
     }
   }

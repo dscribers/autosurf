@@ -62,7 +62,7 @@ export default class Surfer {
    * @return {Surfer}
    */
   append(content) {
-    return this.each((item) => (item.innerHTML = content + item.innerHTML))
+    return this.each((item) => (item.innerHTML += content))
   }
 
   /** Sets or gets the given attribute of the current item
@@ -71,7 +71,7 @@ export default class Surfer {
    * @return {string|Surfer}
    */
   attr(attr, val) {
-    if (!val) {
+    if (val === undefined) {
       return this.#itemy[attr]
     }
 
@@ -207,7 +207,7 @@ export default class Surfer {
    * @return {Surfer}
    */
   prepend(content) {
-    return this.each((item) => (item.innerHTML += content))
+    return this.each((item) => (item.innerHTML = content + item.innerHTML))
   }
 
   /** Executes the given function when the document is loaded without waiting for page assets to load
@@ -307,7 +307,7 @@ export default class Surfer {
    * @return {Surfer}
    */
   value(value) {
-    if (!value) {
+    if (value === undefined) {
       return this.#itemy.value
     }
 

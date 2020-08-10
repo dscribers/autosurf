@@ -10,50 +10,8 @@ export default class WebSurf extends BaseAdapter {
   static #waitPollTime = 500
   static #waited = 0
 
-  /**
-   * @inheritdoc
-   */
-  static init($autosurf, callback) {
-    const oldLoadFunc = window.onload
-
-    window.onload = () => {
-      if (typeof oldLoadFunc === 'function') {
-        oldLoadFunc()
-      }
-
-      let stored = localStorage.getItem(this.#storeName)
-
-      if (stored) {
-        stored = JSON.parse(stored)
-
-        localStorage.removeItem(this.#storeName)
-
-        this.#isReloaded = true
-      }
-
-      if (typeof callback === 'function') {
-        callback(stored)
-      }
-    }
-
-    const oldBeforeUnloadFunc = window.onbeforeunload
-
-    window.onbeforeunload = () => {
-      if (typeof oldBeforeUnloadFunc === 'function') {
-        oldBeforeUnloadFunc()
-      }
-
-      this.#backup($autosurf)
-    }
-  }
-
-  /**
-   * @inheritdoc
-   */
-  static quit ($autosurf) {
-    this.#needsBackup(false)
-    this.#clearBackup()
-  }
+  static #errorCallback = () => {}
+  static #successCallback = () => {}
 
   /**
    * @inheritdoc
@@ -116,55 +74,11 @@ export default class WebSurf extends BaseAdapter {
    */
   static doClick(selector) {
     if (selector) {
-      new Surfer(select).click()
-      this.#acted()
+      new Surfer(selector).click()
+      this.#done(true)
     } else {
-      this.#acted()
+      this.#done(false)
       throw new Error()
-    }
-  }
-
-  /**
-   * @inheritdoc
-   */
-  static doGoBack() {
-    if (window.history) {
-      window.history.back()
-      this.#acted()
-    } else {
-      this.#acted()
-      throw new Error()
-    }
-  }
-
-  /**
-   * @inheritdoc
-   */
-  static doWait(milliseconds) {
-    if (milliseconds) {
-      setTimeout(() => {}, milliseconds)
-      this.#acted()
-    } else {
-      this.#acted()
-      throw new Error()
-    }
-  }
-
-  /**
-   * @inheritdoc
-   */
-  static doWaitTillPageLoads() {
-    if (this.#isReloaded) {
-      this.#isReloaded = false
-      this.#acted()
-    } else {
-      if (this.#waited >= this.#maxLoadWaitTime) {
-        this.#acted()
-        throw new Error()
-      }
-
-      setTimeout(() => this.doWaitTillPageLoads(), this.#waitPollTime)
-      this.#waited += this.#waitPollTime
     }
   }
 
@@ -179,10 +93,20 @@ export default class WebSurf extends BaseAdapter {
       item.style.color = '#0e90d2'
       item.style.backgroundColor = '#ffffff'
       item.focus()
-
-      this.#acted()
     } else {
-      this.#acted()
+      throw new Error()
+    }
+  }
+
+  /**
+   * @inheritdoc
+   */
+  static doGoBack() {
+    if (window.history) {
+      window.history.back()
+      this.#done(true)
+    } else {
+      this.#done(false)
       throw new Error()
     }
   }
@@ -191,15 +115,15 @@ export default class WebSurf extends BaseAdapter {
    * @inheritdoc
    */
   static doGoto(url) {
-    this.#acted()
-    location.href = url
+    this.#done()
+    setTimeout(() => (location.href = url))
   }
 
   /**
    * @inheritdoc
    */
   static doRefresh() {
-    this.#acted()
+    this.#done()
     location.reload()
   }
 
@@ -209,9 +133,9 @@ export default class WebSurf extends BaseAdapter {
   static doSubmitForm(selector) {
     if (selector) {
       new Surfer(selector).item.submit()
-      this.#acted()
+      this.#done(true)
     } else {
-      this.#acted()
+      this.#done(false)
       throw new Error()
     }
   }
@@ -219,7 +143,7 @@ export default class WebSurf extends BaseAdapter {
   /**
    * @inheritdoc
    */
-  static doType (selector, str, speed = 500) {
+  static doType (selector, str, speed = 100) {
     if (selector) {
       const item = new Surfer(selector)
 
@@ -231,39 +155,143 @@ export default class WebSurf extends BaseAdapter {
         item.value(item.value() + str[index])
 
         if (++index < str.length) {
-          setTimeout(() => type(), speed)
+          setTimeout(type, speed)
         } else {
-          this.#acted()
+          this.#done(true)
         }
       }
 
       type()
     } else {
-      this.#acted()
+      this.#done(false)
       throw new Error()
     }
   }
 
-  static #acted() {
-    this.#needsBackup(true)
+  /**
+   * @inheritdoc
+   */
+  static doWait(milliseconds) {
+    if (milliseconds) {
+      setTimeout(() => {}, milliseconds)
+      this.#done(true)
+    } else {
+      this.#done(false)
+      throw new Error()
+    }
+  }
+
+  /**
+   * @inheritdoc
+   */
+  static doWaitTillPageLoads() {
+    if (this.#isReloaded) {
+      this.#isReloaded = false
+      this.#done(true)
+    } else {
+      if (this.#waited >= this.#maxLoadWaitTime) {
+        this.#done(false)
+        throw new Error()
+      }
+
+      setTimeout(() => this.doWaitTillPageLoads(), this.#waitPollTime)
+      this.#waited += this.#waitPollTime
+    }
+  }
+
+  /**
+   * @inheritdoc
+   */
+  static init($autosurf, callback) {
+    const oldLoadFunc = window.onload
+
+    window.onload = () => {
+      if (typeof oldLoadFunc === 'function') {
+        oldLoadFunc()
+      }
+
+      let stored = localStorage.getItem(this.#storeName)
+
+      if (stored) {
+        try {
+          stored = JSON.parse(stored)
+
+          localStorage.removeItem(this.#storeName)
+
+          this.#isReloaded = true
+        } catch (e) {
+          stored = undefined
+        }
+      }
+
+      if (typeof callback === 'function') {
+        callback(stored)
+      }
+    }
+
+    const oldBeforeUnloadFunc = window.onbeforeunload
+
+    window.onbeforeunload = () => {
+      if (typeof oldBeforeUnloadFunc === 'function') {
+        oldBeforeUnloadFunc()
+      }
+
+      this.#backup($autosurf)
+    }
+  }
+
+  /**
+   * @inheritdoc
+   */
+  static quit($autosurf) {
+    this.#needsBackup(false)
+    this.#clearBackup()
+  }
+
+  /**
+   * Sets the function to call when an action fails
+   * @param {Function} callback
+   */
+  static setErrorCallback(callback) {
+    this.#errorCallback = callback
+  }
+
+  /**
+   * Sets the function to call when an action was performed successfully
+   * @param {Function} callback
+   */
+  static setSuccessCallback(callback) {
+    this.#successCallback = callback
   }
 
   static #backup($autosurf) {
     if (this.#shouldBackup) {
-      localStorage.setItem(this.#storeName, JSON.stringify($autosurf))
+      localStorage.setItem(
+        this.#storeName,
+        JSON.stringify($autosurf.getBackupData())
+      )
     }
   }
 
   static #checked(status) {
-    this.#acted()
-
     if (!status) {
+      this.#done(false)
       throw new Error()
     }
+
+    this.#done(true)
   }
 
   static #clearBackup() {
     localStorage.removeItem(this.#storeName)
+  }
+
+  static #done(status) {
+    this.#needsBackup(true)
+
+    if (typeof status === 'boolean') {
+      setTimeout(status ? this.#successCallback : this.#errorCallback)
+    }
   }
 
   static #needsBackup(status) {

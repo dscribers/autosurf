@@ -1,21 +1,23 @@
 import BaseAdapter from './adapters/BaseAdapter'
 import WebSurf from './adapters/WebSurf'
 
-export default class AutoSurf {
-  #STATUS_SUCCESS = true
-  #STATUS_ERROR = false
+class Private {
+  static STATUS_SUCCESS = true
+  static STATUS_ERROR = false
 
-  #Surf = null
+  static Surf = null
 
-  #config = {
+  static config = {
     autoAdvance: true,
+    defaultFailMessage: 'Something went wrong',
+    typingSpeed: 500,
   }
 
-  #actionables = []
-  #schedules = []
-  #results = []
-  #events = {}
-  #allEvents = [
+  static actionables = []
+  static schedules = []
+  static results = []
+  static events = {}
+  static allEvents = [
     'actionError',
     'actionFailed',
     'actionStart',
@@ -27,26 +29,57 @@ export default class AutoSurf {
     'scheduleInit',
     'scheduleStart',
   ]
-  #customHandlers = {}
+  static customHandlers = {}
 
-  #canStart = false
-  #isDone = false
-  #isInitialized = false
-  #isLoading = false
-  #isPaused = false
-  #isReady = false
-  #isWorking = false
-  #isWaiting = false
+  static canStart = false
+  static isDone = false
+  static isInitialized = false
+  static isLoading = false
+  static isPaused = false
+  static isReady = false
+  static isWorking = false
+  static isWaiting = false
 
-  #current = null
-  #currentAction = null
-  #currentIndex = null
-  #currentSchedule = null
-  #toResume = null
+  static current = null
+  static currentAction = null
+  static currentIndex = null
+  static currentSchedule = null
+  static toResume = null
+
+  static startLoopCount = 0
 
   /**
+   * @inheritdoc
+   */
+  toJSON() {
+    return {
+      actionables: Private.actionables,
+      config: Private.config,
+      schedules: Private.schedules,
+      results: Private.results,
+      canStart: Private.canStart,
+      isDone: Private.isDone,
+      isInitialized: Private.isInitialized,
+      isLoading: Private.isLoading,
+      isPaused: Private.isPaused,
+      isReady: Private.isReady,
+      isWaiting: Private.isWaiting,
+      isWorking: Private.isWorking,
+      current: Private.current,
+      currentAction: Private.currentAction,
+      currentIndex: Private.currentIndex,
+      currentSchedule: Private.currentSchedule,
+      toResume: Private.toResume,
+    }
+  }
+}
+
+export default class AutoSurf {
+  /**
    * @param {object} config The options. Keys include:
-   * autoAdvance (boolean): Indicates whether to automatically advance to the next step or not.
+   * autoAdvance (boolean): Indicates whether to automatically advance to the next step or not. Defaults to TRUE
+   * defaultFailMessage (string): The default message for failed actions. It may be overridden by a more specific message, if available.
+   * typingSpeed (integer): The speed to type at. Defaults to 500
    * @param {BaseAdapter} Adapter A subclass of BaseAdapter
    */
   constructor(config = {}, Adapter) {
@@ -60,16 +93,20 @@ export default class AutoSurf {
       throw new Error('Adapter must be a subclass of BaseAdapter')
     }
 
-    this.#Surf = Adapter
+    Private.Surf = Adapter
 
-    this.#config = {
-      ...this.#config,
+    Private.config = {
+      ...Private.config,
       ...config,
     }
 
-    this.#customHandlers.doGoto = this.#handleDoGoto
-    this.#customHandlers.doPause = this.#handleDoPause
-    this.#customHandlers.doWait = this.#handleDoWait
+    Private.customHandlers.doGoto = this.#handleDoGoto
+    Private.customHandlers.doPause = this.#handleDoPause
+    Private.customHandlers.doWait = this.#handleDoWait
+  }
+
+  getBackupData() {
+    return new Private()
   }
 
   /**
@@ -80,9 +117,9 @@ export default class AutoSurf {
    */
   on(event, callback) {
     if (event === '*') {
-      this.#allEvents.forEach((evt) => (this.#events[evt] = callback))
+      Private.allEvents.forEach((evt) => (Private.events[evt] = callback))
     } else {
-      event.split(',').forEach((evt) => (this.#events[evt.trim()] = callback))
+      event.split(',').forEach((evt) => (Private.events[evt.trim()] = callback))
     }
 
     return this
@@ -93,7 +130,7 @@ export default class AutoSurf {
       throw new Error('Schedules must be an array')
     }
 
-    this.#schedules = schedules
+    Private.schedules = schedules
     this.#parseSchedules()
 
     return this
@@ -104,18 +141,18 @@ export default class AutoSurf {
    * @returns {AutoSurf}
    */
   pause() {
-    if (this.#isPaused) {
+    if (Private.isPaused) {
       return this
     }
 
-    this.#isReady = false
-    this.#isPaused = true
+    Private.isReady = false
+    Private.isPaused = true
 
     this.#trigger('paused', {
-      scheduleIndex: this.#currentSchedule,
-      actionIndex: this.#currentIndex,
-      action: this.#currentAction,
-      on: this.#current,
+      scheduleIndex: Private.currentSchedule,
+      actionIndex: Private.currentIndex,
+      action: Private.currentAction,
+      on: Private.current,
     })
 
     return this
@@ -128,7 +165,20 @@ export default class AutoSurf {
   ready(callback = () => {}) {
     this.#initAdapter(callback)
 
-    this.#canStart = true
+    Private.canStart = true
+
+    return this
+  }
+
+  /**
+   * Reconfigures the surfer
+   * @param {object} config Keys include:
+   * autoAdvance (boolean): Indicates whether to automatically advance to the next step or not. Defaults to TRUE
+   * defaultFailMessage (string): The default message for failed actions. It may be overridden by a more specific message, if available.
+   * typingSpeed (integer): The speed to type at. Defaults to 500
+   */
+  reconfigure(config) {
+    Private.config = { ...Private.config, ...config }
 
     return this
   }
@@ -138,7 +188,7 @@ export default class AutoSurf {
    * @returns {AutoSurf}
    */
   restart() {
-    if (this.#isLoading) {
+    if (Private.isLoading) {
       setTimeout(() => this.restart(), 1000)
     }
 
@@ -146,9 +196,9 @@ export default class AutoSurf {
 
     this.#parseSchedules()
 
-    this.#currentSchedule = -1
-    this.#isDone = true
-    this.#results = []
+    Private.currentSchedule = -1
+    Private.isDone = true
+    Private.results = []
 
     this.#nextSchedule()
 
@@ -160,103 +210,89 @@ export default class AutoSurf {
    * @returns {AutoSurf}
    */
   resume() {
-    if (!this.#isPaused) {
+    if (!Private.isPaused) {
       return this
     }
 
-    this.#isReady = true
-    this.#isPaused = false
+    this.#trigger('resumed', {
+      scheduleIndex: Private.currentSchedule,
+      actionIndex: Private.currentIndex,
+      action: Private.currentAction,
+      on: Private.current,
+    })
 
-    if (this.#toResume === 2) {
+    Private.isReady = true
+    Private.isPaused = false
+
+    if (this.#scheduleIsEmpty()) {
+      this.#nextSchedule()
+    } else if (Private.toResume === 2) {
       this.#checkNext()
     } else {
       this.#doNext()
     }
 
-    this.#trigger('resumed', {
-      scheduleIndex: this.#currentSchedule,
-      actionIndex: this.#currentIndex,
-      action: this.#currentAction,
-      on: this.#current,
-    })
-
     return this
   }
 
-  /** Initiates execution
+  /**
+   * Initiates execution
    * @param {object} config Keys include:
-   * autoAdvance (boolean): Indicates whether to automatically advance to the next step or not.
+   * autoAdvance (boolean): Indicates whether to automatically advance to the next step or not. Defaults to TRUE
+   * defaultFailMessage (string): The default message for failed actions. It may be overridden by a more specific message, if available.
+   * typingSpeed (integer): The speed to type at. Defaults to 500
    * @return {AutoSurf}
    */
   start(config = {}) {
-    if (!this.#canStart) {
+    if (!Private.canStart) {
       throw new Error('You have to call ready first')
     }
 
     // Don't continue until loading is done
-    if (this.#isLoading) {
-      setTimeout(() => this.start(config, false), 1000)
+    if (Private.isLoading || !Private.schedules.length) {
+      if (Private.startLoopCount < 10) {
+        Private.startLoopCount++
+
+        setTimeout(() => this.start(config, false), 1000)
+      }
 
       return this
     }
 
-    this.#currentSchedule = -1
-    this.#isDone = true
-    this.#config = { ...this.#config, ...config }
+    Private.currentSchedule = -1
+    Private.isDone = true
+    Private.config = { ...Private.config, ...config }
 
     this.#nextSchedule()
 
     return this
   }
 
-  /**
-   * @inheritdoc
-   */
-  toJSON() {
-    return {
-      _actionables: this.#actionables,
-      _schedules: this.#schedules,
-      _results: this.#results,
-      _canStart: this.#canStart,
-      _isDone: this.#isDone,
-      _isInitialized: this.#isInitialized,
-      _isLoading: this.#isLoading,
-      _isPaused: this.#isPaused,
-      _isReady: this.#isReady,
-      _isWaiting: this.#isWaiting,
-      _isWorking: this.#isWorking,
-      _current: this.#current,
-      _currentAction: this.#currentAction,
-      _currentIndex: this.#currentIndex,
-      _currentSchedule: this.#currentSchedule,
-      _toResume: this.#toResume,
-    }
-  }
-
   #checkNext(fresh) {
     try {
-      this.#currentAction = 'check'
+      Private.currentAction = 'check'
+      Private.toResume = 2
 
       if (fresh) {
-        this.#currentIndex = 0
+        Private.currentIndex = 0
       } else {
-        this.#currentIndex++
+        Private.currentIndex++
       }
 
       if (
-        this.#isReady &&
-        !this.#isLoading &&
-        this.#actionables[this.#currentSchedule]
+        Private.isReady &&
+        !Private.isLoading &&
+        Private.actionables[Private.currentSchedule]
       ) {
-        if (this.#actionables[this.#currentSchedule].toCheck.length) {
-          this.#current = this.#actionables[
-            this.#currentSchedule
+        if (Private.actionables[Private.currentSchedule].toCheck.length) {
+          Private.current = Private.actionables[
+            Private.currentSchedule
           ].toCheck.shift()
 
-          if (this.#current) {
+          if (Private.current) {
             this.#startWorking()
 
-            const { action, params, selector } = this.#current
+            const { action, params, selector } = Private.current
 
             let _action = action
 
@@ -264,35 +300,20 @@ export default class AutoSurf {
               _action = action.replace(/not/i, '')
             }
 
-            this.#isReady = false
+            Private.isReady = false
             this.#handle(_action, params, selector, (status) =>
               this.#verify(action, status)
             )
           }
         } else {
-          if (!this.#isDone) {
-            this.#trigger('scheduleFinish', {
-              scheduleIndex: this.#currentSchedule,
-            })
-          }
-
-          this.#isDone = true
-
-          if (this.#config.autoAdvance) {
-            this.#nextSchedule()
-          } else {
-            this.pause()
-          }
+          this.#finishSchedule()
         }
-      } else {
-        this.#toResume = 2
       }
     } catch (e) {
-      this.#fail()
-      this.#isReady = true
-      this.#error(e.message)
+      Private.isReady = true
+      this.#fail(e.message)
 
-      if (this.#config.autoAdvance) {
+      if (Private.config.autoAdvance) {
         this.#checkNext()
       } else {
         this.pause()
@@ -300,28 +321,49 @@ export default class AutoSurf {
     }
   }
 
+  #done() {
+    if (Private.current !== null) {
+      Private.current = null
+      Private.isReady = false
+      Private.isDone = true
+
+      this.#stopWorking()
+
+      // trigger done
+      Private.Surf.quit(this)
+      this.#trigger('done', Private.results)
+    }
+  }
+
   #doNext(fresh) {
     try {
-      this.#currentAction = 'do'
+      Private.currentAction = 'do'
+      Private.toResume = 1
 
       if (fresh) {
-        this.#currentIndex = 0
+        Private.currentIndex = 0
       } else {
-        this.#currentIndex++
+        Private.currentIndex++
       }
 
       if (
-        this.#isReady &&
-        !this.#isLoading &&
-        this.#actionables[this.#currentSchedule]
+        Private.isReady &&
+        !Private.isLoading &&
+        Private.actionables[Private.currentSchedule]
       ) {
-        if (this.#actionables[this.#currentSchedule].toDo.length) {
-          this.#current = this.#actionables[this.#currentSchedule].toDo.shift()
+        if (Private.actionables[Private.currentSchedule].toDo.length) {
+          Private.current = Private.actionables[
+            Private.currentSchedule
+          ].toDo.shift()
 
-          if (this.#current) {
-            const { action, params, selector } = this.#current
+          if (Private.current) {
+            const { action, params = [], selector } = Private.current
 
-            this.#isReady = false
+            Private.isReady = false
+
+            if (action === 'type' && params.length < 3) {
+              params.push(Private.config.typingSpeed)
+            }
 
             this.#handle(action, params, selector, (status) =>
               this.#handled(status)
@@ -331,13 +373,11 @@ export default class AutoSurf {
           // nothing to do
           this.#checkNext(true)
         }
-      } else {
-        this.#toResume = 1
       }
     } catch (e) {
-      this.#error(e.message)
+      this.#fail(e.message)
 
-      if (this.#config.autoAdvance) {
+      if (Private.config.autoAdvance) {
         this.#doNext()
       } else {
         this.pause()
@@ -345,104 +385,117 @@ export default class AutoSurf {
     }
   }
 
-  #error(message = 'Something went wrong') {
-    try {
-      this.#stopWorking()
-
-      if (message) {
-        this.#trigger('actionError', {
-          scheduleIndex: this.#currentSchedule,
-          actionIndex: this.#currentIndex,
-          action: this.#currentAction,
-          on: this.#current,
-          message,
-        })
-      }
-    } catch (e) {}
-
-    return this
-  }
-
-  #fail() {
+  #fail(message = 'Something went wrong') {
     try {
       this.#stopWorking()
 
       // save to result
 
-      if (this.#results.length <= this.#currentSchedule) {
-        this.#results.push({
-          title: this.#schedules[this.#currentSchedule].title,
+      if (Private.results.length <= Private.currentSchedule) {
+        Private.results.push({
+          title: Private.schedules[Private.currentSchedule].title,
           list: [],
           passed: 0,
           failed: 0,
         })
       }
-      this.#results[this.#currentSchedule]['failed']++
-      this.#results[this.#currentSchedule]['list'].push({
-        action: this.#currentAction,
-        description: this.#current.description,
-        status: false,
+
+      Private.results[Private.currentSchedule]['failed']++
+      Private.results[Private.currentSchedule]['list'].push({
+        action: Private.currentAction,
+        index: this.currentIndex,
+        description: Private.current.description,
+        is_succes: false,
       })
 
       // trigger failed
 
       this.#trigger('actionFailed', {
-        scheduleIndex: this.#currentSchedule,
-        actionIndex: this.#currentIndex,
-        action: this.#currentAction,
-        on: this.#current,
+        scheduleIndex: Private.currentSchedule,
+        actionIndex: Private.currentIndex,
+        action: Private.currentAction,
+        on: Private.current,
+        message,
       })
     } catch (e) {}
 
     return this
   }
 
+  #finishSchedule() {
+    if (this.#scheduleIsEmpty()) {
+      if (!Private.isDone) {
+        this.#trigger('scheduleFinish', {
+          scheduleIndex: Private.currentSchedule,
+        })
+      }
+
+      Private.isDone = true
+
+      if (!this.#hasNext()) {
+        this.#done()
+      } else if (Private.config.autoAdvance) {
+        this.#nextSchedule()
+      } else {
+        this.pause()
+      }
+    }
+  }
+
   #handle(action, params, selector, callback) {
     const ucase = (str) => str.replace(/^[a-z]/i, (chr) => chr.toUpperCase())
-    const method = `${this.#currentAction}${ucase(action)}`
+    const method = `${Private.currentAction}${ucase(action)}`
 
     this.#startWorking()
 
-    if (this.#customHandlers[method]) {
-      this.#customHandlers[method].call(this, callback, selector, params)
+    try {
+      Private.Surf.doFocus(selector)
+    } catch (e) {}
+
+    if (Private.customHandlers[method]) {
+      Private.customHandlers[method].call(this, callback, selector, params)
     } else {
       try {
         if (selector) {
           params.unshift(selector)
         }
 
-        this.#Surf[method](...params)
+        Private.Surf.setSuccessCallback(() => {
+          callback(Private.STATUS_SUCCESS)
+        })
 
-        callback(this.#STATUS_SUCCESS)
+        Private.Surf.setErrorCallback(() => {
+          callback(Private.STATUS_ERROR)
+        })
+
+        Private.Surf[method](...params)
       } catch (e) {
-        if (e.message) {
-          this.#error(e.message)
-        }
+        this.#fail(e.message)
 
-        callback(this.#STATUS_ERROR)
+        callback(Private.STATUS_ERROR)
       }
-
-      try {
-        this.#Surf.doFocus(selector)
-      } catch (e) {}
     }
   }
 
   #handled(status) {
-    if (status === this.#STATUS_SUCCESS) {
+    if (status === Private.STATUS_SUCCESS) {
       this.#success()
     } else {
       this.#fail()
     }
 
-    if (!this.#isPaused && !this.#isDone && !this.#isWaiting) {
-      this.#isReady = true
-      this.#isLoading = false
+    if (!Private.isPaused && !Private.isDone && !Private.isWaiting) {
+      Private.isReady = true
+      Private.isLoading = false
 
-      if (this.#config.autoAdvance) {
+      if (Private.config.autoAdvance) {
         this.#doNext()
       } else {
-        this.pause()
+        if (this.#scheduleIsEmpty()) {
+          this.#finishSchedule()
+        } else {
+          this.pause()
+        }
       }
     }
 
@@ -451,22 +504,22 @@ export default class AutoSurf {
 
   #handleDoGoto(callback, selector, urlParams) {
     if (!urlParams.length) {
-      return callback(this.#STATUS_ERROR)
+      return callback(Private.STATUS_ERROR)
     }
 
-    if (this.#currentSchedule === undefined) {
+    if (Private.currentSchedule === undefined) {
       // only load page if started
       setTimeout(() => this.#handleDoGoto(callback, selector, urlParams), 1000)
     } else {
-      this.#isReady = false
-      this.#isLoading = true
+      Private.isReady = false
+      Private.isLoading = true
 
       try {
-        this.#Surf.doGoto(...urlParams)
+        Private.Surf.doGoto(...urlParams)
 
-        callback(this.#STATUS_SUCCESS)
+        callback(Private.STATUS_SUCCESS)
       } catch (e) {
-        callback(this.#STATUS_ERROR)
+        callback(Private.STATUS_ERROR)
       }
     }
 
@@ -476,47 +529,45 @@ export default class AutoSurf {
   #handleDoPause(callback) {
     this.pause()
 
-    callback(this.#STATUS_SUCCESS)
+    callback(Private.STATUS_SUCCESS)
   }
 
   #handleDoWait(callback, selector, millisecondsParam) {
     try {
       this.#waiting()
 
-      this.#Surf.doWait(...millisecondsParam)
+      Private.Surf.doWait(...millisecondsParam)
 
       this.#waiting(false)
 
-      callback(this.#STATUS_SUCCESS)
+      callback(Private.STATUS_SUCCESS)
     } catch (e) {
       this.#waiting(false)
 
-      callback(this.#STATUS_ERROR)
+      callback(Private.STATUS_ERROR)
     }
   }
 
   #hasNext() {
-    return this.#actionables[this.#currentSchedule + 1] !== undefined
+    return Private.actionables[Private.currentSchedule + 1] !== undefined
   }
 
   #initAdapter(callback) {
-    this.#Surf.init(this, (fromStore) => {
+    Private.Surf.init(this, (fromStore) => {
       if (fromStore) {
-        const allowedKeys = Object.keys(this.toJSON())
+        const allowedKeys = Object.keys(new Private().toJSON())
 
         for (let key in fromStore) {
           if (!allowedKeys.includes(key)) {
             return
           }
 
-          if (!this.hasOwnProperty(key)) {
-            if (key.startsWith('_')) {
-              key = key.replace('_', '#')
-            }
-          }
-
-          this[key] = fromStore[key]
+          Private[key] = fromStore[key]
         }
+      }
+
+      if (Private.isWorking) {
+        this.#handled(Private.STATUS_SUCCESS)
       }
 
       callback(!!fromStore)
@@ -524,32 +575,22 @@ export default class AutoSurf {
   }
 
   #nextSchedule() {
-    if (!this.#isDone) {
+    if (!Private.isDone) {
       return this
     }
 
     if (!this.#hasNext()) {
-      if (this.#current !== null) {
-        this.#current = null
-        this.#isReady = false
-        this.#isDone = true
-
-        this.#stopWorking()
-
-        // trigger done
-        this.#Surf.quit(this)
-        this.#trigger('done', this.#results)
-      }
+      this.#done()
 
       return this
     }
 
-    this.#currentSchedule++
-    this.#isReady = true
-    this.#isDone = false
+    Private.currentSchedule++
+    Private.isReady = true
+    Private.isDone = false
 
     this.#trigger('scheduleStart', {
-      scheduleIndex: this.#currentSchedule,
+      scheduleIndex: Private.currentSchedule,
     })
 
     this.#doNext(true)
@@ -558,7 +599,9 @@ export default class AutoSurf {
   }
 
   #parseSchedules() {
-    this.#schedules.forEach((schedule, i) => {
+    Private.isLoading = true
+
+    Private.schedules.forEach((schedule, i) => {
       schedule.do.forEach((toDo) => {
         if (schedule.url) {
           toDo['url'] = schedule.url
@@ -575,14 +618,14 @@ export default class AutoSurf {
       })
     })
 
-    this.#isLoading = false
+    Private.isLoading = false
 
     return this
   }
 
   #runCheck(prop, index) {
-    if (this.#actionables.length === index) {
-      this.#actionables.push({
+    if (Private.actionables.length === index) {
+      Private.actionables.push({
         toDo: [],
         toCheck: [],
       })
@@ -600,7 +643,7 @@ export default class AutoSurf {
       ...prop,
     }
 
-    this.#actionables[index].toCheck.push(obj)
+    Private.actionables[index].toCheck.push(obj)
 
     return this
   }
@@ -614,37 +657,45 @@ export default class AutoSurf {
       ...prop,
     }
 
-    if (this.#actionables.length === index) {
-      this.#actionables.push({
+    if (Private.actionables.length === index) {
+      Private.actionables.push({
         toDo: [],
         toCheck: [],
       })
     }
 
-    this.#actionables[index].toDo.push(obj)
+    Private.actionables[index].toDo.push(obj)
 
     return this
   }
 
+  #scheduleIsEmpty() {
+    return (
+      !Private.actionables[Private.currentSchedule] ||
+      (!Private.actionables[Private.currentSchedule].toDo.length &&
+        !Private.actionables[Private.currentSchedule].toCheck.length)
+    )
+  }
+
   #startWorking() {
-    if (this.#isWorking) {
+    if (Private.isWorking) {
       return this
     }
 
     this.#trigger('actionStart', {
-      scheduleIndex: this.#currentSchedule,
-      actionIndex: this.#currentIndex,
-      action: this.#currentAction,
-      on: this.#current,
+      scheduleIndex: Private.currentSchedule,
+      actionIndex: Private.currentIndex,
+      action: Private.currentAction,
+      on: Private.current,
     })
 
-    this.#isWorking = true
+    Private.isWorking = true
 
     return this
   }
 
   #stopWorking() {
-    this.#isWorking = false
+    Private.isWorking = false
 
     return this
   }
@@ -654,29 +705,30 @@ export default class AutoSurf {
       this.#stopWorking()
 
       // save to result
-      if (this.#results.length <= this.#currentSchedule) {
-        this.#results.push({
-          title: this.#schedules[this.#currentSchedule].title,
+      if (Private.results.length <= Private.currentSchedule) {
+        Private.results.push({
+          title: Private.schedules[Private.currentSchedule].title,
           list: [],
           passed: 0,
           failed: 0,
         })
       }
 
-      this.#results[this.#currentSchedule]['passed']++
-      this.#results[this.#currentSchedule]['list'].push({
-        action: this.#currentAction,
-        description: this.#current.description,
-        status: true,
+      Private.results[Private.currentSchedule]['passed']++
+      Private.results[Private.currentSchedule]['list'].push({
+        action: Private.currentAction,
+        index: this.currentIndex,
+        description: Private.current.description,
+        is_success: true,
       })
 
       // trigger success
 
       this.#trigger('actionSuccess', {
-        scheduleIndex: this.#currentSchedule,
-        actionIndex: this.#currentIndex,
-        action: this.#currentAction,
-        on: this.#current,
+        scheduleIndex: Private.currentSchedule,
+        actionIndex: Private.currentIndex,
+        action: Private.currentAction,
+        on: Private.current,
       })
     } catch (e) {}
 
@@ -691,12 +743,12 @@ export default class AutoSurf {
         schedule = detail.schedule
         delete detail.schedule
       } else if (detail.scheduleIndex) {
-        schedule = this.#schedules[detail.scheduleIndex]
-      } else if (this.#currentSchedule > -1) {
-        schedule = this.#schedules[this.#currentSchedule]
+        schedule = Private.schedules[detail.scheduleIndex]
+      } else if (Private.currentSchedule > -1) {
+        schedule = Private.schedules[Private.currentSchedule]
       }
 
-      this.#events[event]({
+      Private.events[event]({
         name: event,
         schedule,
         detail,
@@ -710,37 +762,40 @@ export default class AutoSurf {
     try {
       if (action.toLowerCase().indexOf('not') !== -1) {
         // must not be true
-        if (status === this.#STATUS_SUCCESS) {
+        if (status === Private.STATUS_SUCCESS) {
           this.#fail()
         } else {
           this.#success()
         }
       } else {
         // must be true
-        if (status === this.#STATUS_SUCCESS) {
+        if (status === Private.STATUS_SUCCESS) {
           this.#success()
         } else {
           this.#fail()
         }
       }
     } catch (e) {
-      this.#fail()
-      this.#error(e.message)
+      this.#fail(e.message)
     }
 
-    this.#isReady = true
+    Private.isReady = true
 
-    if (this.#config.autoAdvance) {
+    if (Private.config.autoAdvance) {
       this.#checkNext()
     } else {
-      this.pause()
+      if (this.#scheduleIsEmpty()) {
+        this.#finishSchedule()
+      } else {
+        this.pause()
+      }
     }
 
     return this
   }
 
   #waiting(status) {
-    this.#isWaiting = status !== undefined ? status : true
+    Private.isWaiting = status !== undefined ? status : true
 
     return this
   }

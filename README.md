@@ -41,7 +41,9 @@ $surf
 ```js
 
 const $surf = new AutoSurf({
-  autoAdvance: false, // Indicates whether to automatically advance to the next step or not. Defaults to TRUE
+  autoAdvance: false, // Indicates whether to automatically advance to the next step or not. Defaults to TRUE,
+  defaultFailMessage: 'Something went wrong', // The default message for failed actions. It may be overridden by a more specific message, if available.
+  typingSpeed: 500, // The speed for the typing action in milliseconds. Defaults to 100
 })
 
 ```
@@ -56,6 +58,7 @@ on | (string) event, (function) callback | Adds an event listener
 schedules | (array) schedules | An array of schedules to execute (See [below](#schedules))
 pause | - | Pauses the execution
 ready | (function) callback | Sets the function to call when AutoSurf is ready to use
+reconfigure | (object) config | Updates the configuration on the fly
 restart | - | Restarts the execution from the beginning
 resume | - | Resumes a paused execution
 start | (object) config | Starts the execution
@@ -93,7 +96,6 @@ The following is the list of events:
 
 Event | Description
 ------|------------
-actionError | Triggered when an error occurs while executing an action (do \| check)
 actionFailed | Triggered when an action (do \| check) fails
 actionStart | Triggered when starting to execute an action (do \| check)
 actionSuccess | Triggered when an action executes successfully

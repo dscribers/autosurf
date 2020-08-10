@@ -81,7 +81,7 @@ export default class Surfer {
   click() {
     return this.each((item) =>
       item.dispatchEvent(
-        new MouseEvent({
+        new MouseEvent('click', {
           bubbles: true,
           cancelable: true,
           view: window,

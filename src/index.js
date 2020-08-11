@@ -72,6 +72,23 @@ class Private {
       toResume: Private.toResume,
     }
   }
+
+  static reset() {
+    Private.actionables = []
+    Private.results = []
+
+    Private.isPaused = false
+    Private.isWorking = false
+    Private.isWaiting = false
+
+    Private.current = null
+    Private.currentAction = null
+    Private.currentIndex = null
+    Private.currentSchedule = null
+    Private.toResume = null
+
+    Private.startLoopCount = 0
+  }
 }
 
 export default class AutoSurf {
@@ -148,12 +165,16 @@ export default class AutoSurf {
     Private.isReady = false
     Private.isPaused = true
 
-    this.#trigger('paused', {
-      scheduleIndex: Private.currentSchedule,
-      actionIndex: Private.currentIndex,
-      action: Private.currentAction,
-      on: Private.current,
-    })
+    this.#triggerPause()
+
+    return this
+  }
+
+  /**
+   * Called to clean up AutoSurfing
+   */
+  quit() {
+    Private.Surf.quit()
 
     return this
   }
@@ -192,17 +213,14 @@ export default class AutoSurf {
       setTimeout(() => this.restart(), 1000)
     }
 
-    this.#trigger('reset', {})
+    Private.reset()
 
-    this.#parseSchedules()
+    Private.Surf.quit()
+    Private.Surf.init(this)
 
-    Private.currentSchedule = -1
-    Private.isDone = true
-    Private.results = []
+    this.#parseSchedules(true)
 
-    this.#nextSchedule()
-
-    return this
+    return this.start()
   }
 
   /**
@@ -417,6 +435,8 @@ export default class AutoSurf {
         on: Private.current,
         message,
       })
+
+      this.#triggerPause()
     } catch (e) {}
 
     return this
@@ -598,7 +618,7 @@ export default class AutoSurf {
     return this
   }
 
-  #parseSchedules() {
+  #parseSchedules(restarting = false) {
     Private.isLoading = true
 
     Private.schedules.forEach((schedule, i) => {
@@ -612,10 +632,12 @@ export default class AutoSurf {
 
       schedule.check.forEach((toCheck) => this.#runCheck(toCheck, i))
 
-      this.#trigger('scheduleInit', {
-        schedule,
-        scheduleIndex: i,
-      })
+      if (!restarting) {
+        this.#trigger('scheduleInit', {
+          schedule,
+          scheduleIndex: i,
+        })
+      }
     })
 
     Private.isLoading = false
@@ -730,6 +752,8 @@ export default class AutoSurf {
         action: Private.currentAction,
         on: Private.current,
       })
+
+      this.#triggerPause()
     } catch (e) {}
 
     return this
@@ -756,6 +780,19 @@ export default class AutoSurf {
     } catch (e) {}
 
     return this
+  }
+
+  #triggerPause() {
+    if (!Private.isPaused || Private.isWorking) {
+      return
+    }
+
+    this.#trigger('paused', {
+      scheduleIndex: Private.currentSchedule,
+      actionIndex: Private.currentIndex,
+      action: Private.currentAction,
+      on: Private.current,
+    })
   }
 
   #verify(action, status) {

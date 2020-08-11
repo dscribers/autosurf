@@ -78,7 +78,7 @@ export default class WebSurf extends BaseAdapter {
       this.#done(true)
     } else {
       this.#done(false)
-      throw new Error()
+      throw new Error('Selector not provided')
     }
   }
 
@@ -94,7 +94,7 @@ export default class WebSurf extends BaseAdapter {
       item.style.backgroundColor = '#ffffff'
       item.focus()
     } else {
-      throw new Error()
+      throw new Error('Selector not provided')
     }
   }
 
@@ -103,18 +103,18 @@ export default class WebSurf extends BaseAdapter {
    */
   static doGoBack() {
     if (window.history) {
+      this.#done()
       window.history.back()
-      this.#done(true)
     } else {
       this.#done(false)
-      throw new Error()
+      throw new Error('Cannot go back. History not supported.')
     }
   }
 
   /**
    * @inheritdoc
    */
-  static doGoto(url) {
+  static doGoto (url) {
     this.#done()
     setTimeout(() => (location.href = url))
   }
@@ -136,14 +136,14 @@ export default class WebSurf extends BaseAdapter {
       this.#done(true)
     } else {
       this.#done(false)
-      throw new Error()
+      throw new Error('Selector not provided')
     }
   }
 
   /**
    * @inheritdoc
    */
-  static doType (selector, str, speed = 100) {
+  static doType(selector, str, speed = 100) {
     if (selector) {
       const item = new Surfer(selector)
 
@@ -152,6 +152,8 @@ export default class WebSurf extends BaseAdapter {
       let index = 0
 
       const type = () => {
+        console.log('typing', str[index])
+
         item.value(item.value() + str[index])
 
         if (++index < str.length) {
@@ -164,7 +166,7 @@ export default class WebSurf extends BaseAdapter {
       type()
     } else {
       this.#done(false)
-      throw new Error()
+      throw new Error('Selector not provided')
     }
   }
 
@@ -177,7 +179,7 @@ export default class WebSurf extends BaseAdapter {
       this.#done(true)
     } else {
       this.#done(false)
-      throw new Error()
+      throw new Error('Wait period not provided')
     }
   }
 
@@ -191,7 +193,9 @@ export default class WebSurf extends BaseAdapter {
     } else {
       if (this.#waited >= this.#maxLoadWaitTime) {
         this.#done(false)
-        throw new Error()
+        throw new Error(
+          `No response after ${this.#maxLoadWaitTime / 1000} seconds`
+        )
       }
 
       setTimeout(() => this.doWaitTillPageLoads(), this.#waitPollTime)

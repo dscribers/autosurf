@@ -118,10 +118,11 @@ export default class AutoSurf {
     }
 
     Private.customHandlers.doGoto = this.#handleDoGoto
-    Private.customHandlers.doPause = this.#handleDoPause
-    Private.customHandlers.doWait = this.#handleDoWait
   }
 
+  /**
+   * Fetches data that needs to be backed up
+   */
   getBackupData() {
     return new Private()
   }
@@ -319,8 +320,8 @@ export default class AutoSurf {
             }
 
             Private.isReady = false
-            this.#handle(_action, params, selector, (status) =>
-              this.#verify(action, status)
+            this.#handle(_action, params, selector, (status, message) =>
+              this.#verify(action, status, message)
             )
           }
         } else {
@@ -383,8 +384,8 @@ export default class AutoSurf {
               params.push(Private.config.typingSpeed)
             }
 
-            this.#handle(action, params, selector, (status) =>
-              this.#handled(status)
+            this.#handle(action, params, selector, (status, message) =>
+              this.#handled(status, message)
             )
           }
         } else {
@@ -468,10 +469,6 @@ export default class AutoSurf {
 
     this.#startWorking()
 
-    try {
-      Private.Surf.doFocus(selector)
-    } catch (e) {}
-
     if (Private.customHandlers[method]) {
       Private.customHandlers[method].call(this, callback, selector, params)
     } else {
@@ -480,28 +477,34 @@ export default class AutoSurf {
           params.unshift(selector)
         }
 
+        const resetCallbacks = () => {
+          Private.Surf.setSuccessCallback(() => {})
+          Private.Surf.setErrorCallback(() => {})
+        }
+
         Private.Surf.setSuccessCallback(() => {
+          resetCallbacks()
           callback(Private.STATUS_SUCCESS)
         })
 
-        Private.Surf.setErrorCallback(() => {
-          callback(Private.STATUS_ERROR)
+        Private.Surf.setErrorCallback(message => {
+          resetCallbacks()
+          callback(Private.STATUS_ERROR, message)
         })
 
         Private.Surf[method](...params)
       } catch (e) {
-        this.#fail(e.message)
-
-        callback(Private.STATUS_ERROR)
+        resetCallbacks()
+        callback(Private.STATUS_ERROR, e.message)
       }
     }
   }
 
-  #handled(status) {
+  #handled(status, errorMessage) {
     if (status === Private.STATUS_SUCCESS) {
       this.#success()
     } else {
-      this.#fail()
+      this.#fail(errorMessage)
     }
 
     if (!Private.isPaused && !Private.isDone && !Private.isWaiting) {
@@ -544,28 +547,6 @@ export default class AutoSurf {
     }
 
     return this
-  }
-
-  #handleDoPause(callback) {
-    this.pause()
-
-    callback(Private.STATUS_SUCCESS)
-  }
-
-  #handleDoWait(callback, selector, millisecondsParam) {
-    try {
-      this.#waiting()
-
-      Private.Surf.doWait(...millisecondsParam)
-
-      this.#waiting(false)
-
-      callback(Private.STATUS_SUCCESS)
-    } catch (e) {
-      this.#waiting(false)
-
-      callback(Private.STATUS_ERROR)
-    }
   }
 
   #hasNext() {
@@ -795,12 +776,12 @@ export default class AutoSurf {
     })
   }
 
-  #verify(action, status) {
+  #verify(action, status, errorMessage) {
     try {
       if (action.toLowerCase().indexOf('not') !== -1) {
         // must not be true
         if (status === Private.STATUS_SUCCESS) {
-          this.#fail()
+          this.#fail(errorMessage)
         } else {
           this.#success()
         }
@@ -809,7 +790,7 @@ export default class AutoSurf {
         if (status === Private.STATUS_SUCCESS) {
           this.#success()
         } else {
-          this.#fail()
+          this.#fail(errorMessage)
         }
       }
     } catch (e) {

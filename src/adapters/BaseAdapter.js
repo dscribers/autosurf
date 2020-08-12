@@ -128,15 +128,6 @@ export default class BaseAdapter {
   }
 
   /**
-   * Focuses on the current item
-   *
-   * @param {*} selector The selector of the target html element
-   */
-  static doFocus(selector) {
-    this.#defaultResponse()
-  }
-
-  /**
    * Navigate to the given url
    *
    * @param {string} url

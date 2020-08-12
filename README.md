@@ -57,6 +57,8 @@ Method | Params | Description
 on | (string) event, (function) callback | Adds an event listener
 schedules | (array) schedules | An array of schedules to execute (See [below](#schedules))
 pause | - | Pauses the execution
+getBackupData | - | Fetches data that needs to be backed up
+quit | - | Cleans up AutoSurf
 ready | (function) callback | Sets the function to call when AutoSurf is ready to use
 reconfigure | (object) config | Updates the configuration on the fly
 restart | - | Restarts the execution from the beginning
@@ -171,7 +173,6 @@ doClick | (string) selector | Called to click on an element
 doGoBack | - | Called to go back to a previous page
 doWait | (integer) milliseconds | Called to make pause the execution for the given milliseconds
 doWaitTillPageLoads | - | Called to make the next execution wait until after the page finishes loading
-doFocus | (string) selector | Called to focus on the element
 doGoto | (string) url | Called to go to a url
 doRefresh | - | Called to refresh the page
 doSubmitForm | (string) selector | Called to submit the form with the given selector

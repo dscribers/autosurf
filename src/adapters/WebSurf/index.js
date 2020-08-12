@@ -10,6 +10,8 @@ export default class WebSurf extends BaseAdapter {
   static #waitPollTime = 500
   static #waited = 0
 
+  static #blur = () => {}
+
   static #errorCallback = () => {}
   static #successCallback = () => {}
 
@@ -17,6 +19,7 @@ export default class WebSurf extends BaseAdapter {
    * @inheritdoc
    */
   static checkAttrContains(selector, attr, text) {
+    this.#focus(selector)
     this.#checked(new Surfer(selector).attr(attr).indexOf(text) !== -1)
   }
 
@@ -24,6 +27,7 @@ export default class WebSurf extends BaseAdapter {
    * @inheritdoc
    */
   static checkAttrIs(selector, attr, val) {
+    this.#focus(selector)
     this.#checked(new Surfer(selector).attr(attr) == val)
   }
 
@@ -31,6 +35,7 @@ export default class WebSurf extends BaseAdapter {
    * @inheritdoc
    */
   static checkExists(selector) {
+    this.#focus(selector)
     this.#checked(new Surfer(selector).length > 0)
   }
 
@@ -45,6 +50,7 @@ export default class WebSurf extends BaseAdapter {
    * @inheritdoc
    */
   static checkTextContains(selector, text) {
+    this.#focus(selector)
     this.#checked(new Surfer(selector).text().indexOf(text) !== -1)
   }
 
@@ -52,6 +58,7 @@ export default class WebSurf extends BaseAdapter {
    * @inheritdoc
    */
   static checkTextIs(selector, text) {
+    this.#focus(selector)
     this.#checked(new Surfer(selector).text() === text)
   }
 
@@ -59,6 +66,7 @@ export default class WebSurf extends BaseAdapter {
    * @inheritdoc
    */
   static checkValueContains(selector, text) {
+    this.#focus(selector)
     this.#checked(new Surfer(selector).value().indexOf(text) !== -1)
   }
 
@@ -66,6 +74,7 @@ export default class WebSurf extends BaseAdapter {
    * @inheritdoc
    */
   static checkValueIs(selector, value) {
+    this.#focus(selector)
     this.#checked(new Surfer(selector).value() === value)
   }
 
@@ -74,27 +83,12 @@ export default class WebSurf extends BaseAdapter {
    */
   static doClick(selector) {
     if (selector) {
+      this.#focus(selector)
+
       new Surfer(selector).click()
       this.#done(true)
     } else {
-      this.#done(false)
-      throw new Error('Selector not provided')
-    }
-  }
-
-  /**
-   * @inheritdoc
-   */
-  static doFocus(selector) {
-    if (selector) {
-      const item = new Surfer(selector).item
-
-      item.style.border = '2px solid magenta'
-      item.style.color = '#0e90d2'
-      item.style.backgroundColor = '#ffffff'
-      item.focus()
-    } else {
-      throw new Error('Selector not provided')
+      this.#done(false, 'Selector not provided')
     }
   }
 
@@ -106,15 +100,14 @@ export default class WebSurf extends BaseAdapter {
       this.#done()
       window.history.back()
     } else {
-      this.#done(false)
-      throw new Error('Cannot go back. History not supported.')
+      this.#done(false, 'Cannot go back. History not supported.')
     }
   }
 
   /**
    * @inheritdoc
    */
-  static doGoto (url) {
+  static doGoto(url) {
     this.#done()
     setTimeout(() => (location.href = url))
   }
@@ -132,11 +125,12 @@ export default class WebSurf extends BaseAdapter {
    */
   static doSubmitForm(selector) {
     if (selector) {
+      this.#focus(selector)
+
       new Surfer(selector).item.submit()
       this.#done(true)
     } else {
-      this.#done(false)
-      throw new Error('Selector not provided')
+      this.#done(false, 'Selector not provided')
     }
   }
 
@@ -145,6 +139,8 @@ export default class WebSurf extends BaseAdapter {
    */
   static doType(selector, str, speed = 100) {
     if (selector) {
+      this.#focus(selector)
+
       const item = new Surfer(selector)
 
       item.value('')
@@ -165,8 +161,7 @@ export default class WebSurf extends BaseAdapter {
 
       type()
     } else {
-      this.#done(false)
-      throw new Error('Selector not provided')
+      this.#done(false, 'Selector not provided')
     }
   }
 
@@ -175,11 +170,9 @@ export default class WebSurf extends BaseAdapter {
    */
   static doWait(milliseconds) {
     if (milliseconds) {
-      setTimeout(() => {}, milliseconds)
-      this.#done(true)
+      setTimeout(() => this.#done(true), milliseconds)
     } else {
-      this.#done(false)
-      throw new Error('Wait period not provided')
+      this.#done(false, 'Wait period not provided')
     }
   }
 
@@ -192,8 +185,8 @@ export default class WebSurf extends BaseAdapter {
       this.#done(true)
     } else {
       if (this.#waited >= this.#maxLoadWaitTime) {
-        this.#done(false)
-        throw new Error(
+        this.#done(
+          false,
           `No response after ${this.#maxLoadWaitTime / 1000} seconds`
         )
       }
@@ -278,9 +271,10 @@ export default class WebSurf extends BaseAdapter {
   }
 
   static #checked(status) {
+    this.#blur()
+
     if (!status) {
-      this.#done(false)
-      throw new Error()
+      return this.#done(false)
     }
 
     this.#done(true)
@@ -290,11 +284,47 @@ export default class WebSurf extends BaseAdapter {
     localStorage.removeItem(this.#storeName)
   }
 
-  static #done(status) {
+  static #done(status, errorMessage) {
     this.#needsBackup(true)
 
+    this.#blur()
+
     if (typeof status === 'boolean') {
-      setTimeout(status ? this.#successCallback : this.#errorCallback)
+      setTimeout(
+        status ? this.#successCallback : this.#errorCallback,
+        0,
+        errorMessage
+      )
+    }
+  }
+
+  /**
+   * Focuses on the current item
+   *
+   * @param {*} selector The selector of the target html element
+   */
+  static #focus(selector) {
+    if (selector) {
+      const item = new Surfer(selector).item
+
+      const focusData = {
+        backgroundColor: item.style.backgroundColor,
+        border: item.style.border,
+        color: item.style.color,
+      }
+
+      this.#blur = () => {
+        for (let key in focusData) {
+          item.style[key] = focusData[key]
+        }
+      }
+
+      item.style.border = '2px solid magenta'
+      item.style.color = '#0e90d2'
+      item.style.backgroundColor = '#ffffff'
+      item.focus()
+    } else {
+      throw new Error('Selector not provided')
     }
   }
 

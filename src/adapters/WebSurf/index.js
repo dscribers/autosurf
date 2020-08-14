@@ -148,8 +148,6 @@ export default class WebSurf extends BaseAdapter {
       let index = 0
 
       const type = () => {
-        console.log('typing', str[index])
-
         item.value(item.value() + str[index])
 
         if (++index < str.length) {

@@ -9,7 +9,7 @@ class Private {
 
   static config = {
     autoAdvance: true,
-    defaultFailMessage: 'Something went wrong',
+    defaultFailMessage: '',
     typingSpeed: 500,
   }
 
@@ -116,8 +116,6 @@ export default class AutoSurf {
       ...Private.config,
       ...config,
     }
-
-    Private.customHandlers.doGoto = this.#handleDoGoto
   }
 
   /**
@@ -404,7 +402,7 @@ export default class AutoSurf {
     }
   }
 
-  #fail(message = 'Something went wrong') {
+  #fail(message) {
     try {
       this.#stopWorking()
 
@@ -434,7 +432,7 @@ export default class AutoSurf {
         actionIndex: Private.currentIndex,
         action: Private.currentAction,
         on: Private.current,
-        message,
+        message: message || Private.config.defaultFailMessage,
       })
 
       this.#triggerPause()
@@ -519,30 +517,6 @@ export default class AutoSurf {
         } else {
           this.pause()
         }
-      }
-    }
-
-    return this
-  }
-
-  #handleDoGoto(callback, selector, urlParams) {
-    if (!urlParams.length) {
-      return callback(Private.STATUS_ERROR)
-    }
-
-    if (Private.currentSchedule === undefined) {
-      // only load page if started
-      setTimeout(() => this.#handleDoGoto(callback, selector, urlParams), 1000)
-    } else {
-      Private.isReady = false
-      Private.isLoading = true
-
-      try {
-        Private.Surf.doGoto(...urlParams)
-
-        callback(Private.STATUS_SUCCESS)
-      } catch (e) {
-        callback(Private.STATUS_ERROR)
       }
     }
 

@@ -470,14 +470,14 @@ export default class AutoSurf {
     if (Private.customHandlers[method]) {
       Private.customHandlers[method].call(this, callback, selector, params)
     } else {
+      const resetCallbacks = () => {
+        Private.Surf.setSuccessCallback(() => {})
+        Private.Surf.setErrorCallback(() => {})
+      }
+
       try {
         if (selector) {
           params.unshift(selector)
-        }
-
-        const resetCallbacks = () => {
-          Private.Surf.setSuccessCallback(() => {})
-          Private.Surf.setErrorCallback(() => {})
         }
 
         Private.Surf.setSuccessCallback(() => {
@@ -493,7 +493,12 @@ export default class AutoSurf {
         Private.Surf[method](...params)
       } catch (e) {
         resetCallbacks()
-        callback(Private.STATUS_ERROR, e.message)
+        callback(
+          Private.STATUS_ERROR,
+          e.message.replace(
+            "Failed to execute 'querySelectorAll' on 'Document': ", ''
+          )
+        )
       }
     }
   }

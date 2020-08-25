@@ -4,57 +4,105 @@ import babel from 'rollup-plugin-babel'
 import { terser } from 'rollup-plugin-terser'
 import pkg from './package.json'
 
+const babelled = babel({
+  exclude: 'node_modules/**', // only transpile our source code
+  plugins: ['@babel/plugin-proposal-private-methods'],
+})
+
 export default [
   {
     input: 'src/index.js',
     output: [
       {
         file: pkg.rollup.autosurf.main,
-        format: 'cjs'
+        format: 'cjs',
       },
       {
         file: pkg.rollup.autosurf.module,
-        format: 'es'
+        format: 'es',
       },
       {
         file: pkg.rollup.autosurf.browser,
         format: 'iife',
-        name: 'AutoSurf'
-      }
+        name: 'AutoSurf',
+      },
     ],
-    plugins: [
-      resolve(),
-      commonjs(),
-      babel({
-        exclude: 'node_modules/**' // only transpile our source code
-      }),
-      terser()
-    ]
+    plugins: [resolve(), babelled, commonjs(), terser()],
   },
   {
-    input: 'src/Surf.js',
+    input: 'src/adapters/BaseAdapter.js',
     output: [
       {
-        file: pkg.rollup.surf.main,
-        format: 'cjs'
+        file: pkg.rollup.base_adapter.main,
+        format: 'cjs',
       },
       {
-        file: pkg.rollup.surf.module,
-        format: 'es'
+        file: pkg.rollup.base_adapter.module,
+        format: 'es',
       },
       {
-        file: pkg.rollup.surf.browser,
+        file: pkg.rollup.base_adapter.browser,
         format: 'iife',
-        name: 'Surf'
-      }
+        name: 'BaseAdapter',
+      },
     ],
-    plugins: [
-      resolve(),
-      commonjs(),
-      babel({
-        exclude: 'node_modules/**' // only transpile our source code
-      }),
-      terser()
-    ]
-  }
+    plugins: [resolve(), babelled, commonjs(), terser()],
+  },
+  {
+    input: 'src/adapters/WebSurf/index.js',
+    output: [
+      {
+        file: pkg.rollup.websurf.main,
+        format: 'cjs',
+      },
+      {
+        file: pkg.rollup.websurf.module,
+        format: 'es',
+      },
+      {
+        file: pkg.rollup.websurf.browser,
+        format: 'iife',
+        name: 'WebSurf',
+      },
+    ],
+    plugins: [resolve(), babelled, commonjs(), terser()],
+  },
+  {
+    input: 'src/adapters/WebSurf/Surfer.js',
+    output: [
+      {
+        file: pkg.rollup.websurfer.main,
+        format: 'cjs',
+      },
+      {
+        file: pkg.rollup.websurfer.module,
+        format: 'es',
+      },
+      {
+        file: pkg.rollup.websurfer.browser,
+        format: 'iife',
+        name: 'Surfer',
+      },
+    ],
+    plugins: [resolve(), babelled, commonjs(), terser()],
+  },
+  {
+    input: 'src/adapters/BaseAdapter.js',
+    output: [
+      {
+        file: pkg.rollup.base_adapter.main,
+        format: 'cjs',
+      },
+      {
+        file: pkg.rollup.base_adapter.module,
+        format: 'es',
+      },
+      {
+        file: pkg.rollup.base_adapter.browser,
+        format: 'iife',
+        name: 'Surf',
+      },
+    ],
+    plugins: [resolve(), babelled, commonjs(), terser()],
+  },
 ]

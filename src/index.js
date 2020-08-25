@@ -1,893 +1,799 @@
-import Surf from './Surf'
+import BaseAdapter from './adapters/BaseAdapter'
+import WebSurf from './adapters/WebSurf'
 
-/** AutoSurf Object
- * Schedules surf actions
- * @version 1.0
- * @author Ezra Obiwale <contact@ezraobiwale.com>
- * @param {string} url Path to JSON string to load and execute
- * @return {AutoSurf}
- */
-const AutoSurf = function() {
-  if (!this instanceof AutoSurf) {
-    return new AutoSurf()
+class Private {
+  static STATUS_SUCCESS = true
+  static STATUS_ERROR = false
+
+  static Surf = null
+
+  static config = {
+    autoAdvance: true,
+    defaultFailMessage: '',
+    typingSpeed: 500,
   }
 
-  this.version = '0.1'
-  this.config = {
-    debug: false,
-    delayBetweenSchedules: 500
+  static actionables = []
+  static schedules = []
+  static results = []
+  static events = {}
+  static allEvents = [
+    'actionError',
+    'actionFailed',
+    'actionStart',
+    'actionSuccess',
+    'done',
+    'paused',
+    'resumed',
+    'scheduleFinish',
+    'scheduleInit',
+    'scheduleStart',
+  ]
+  static customHandlers = {}
+
+  static canStart = false
+  static isDone = false
+  static isInitialized = false
+  static isLoading = false
+  static isPaused = false
+  static isReady = false
+  static isWorking = false
+  static isWaiting = false
+
+  static current = null
+  static currentAction = null
+  static currentIndex = null
+  static currentSchedule = null
+  static toResume = null
+
+  static startLoopCount = 0
+
+  /**
+   * @inheritdoc
+   */
+  toJSON() {
+    return {
+      actionables: Private.actionables,
+      config: Private.config,
+      schedules: Private.schedules,
+      results: Private.results,
+      canStart: Private.canStart,
+      isDone: Private.isDone,
+      isInitialized: Private.isInitialized,
+      isLoading: Private.isLoading,
+      isPaused: Private.isPaused,
+      isReady: Private.isReady,
+      isWaiting: Private.isWaiting,
+      isWorking: Private.isWorking,
+      current: Private.current,
+      currentAction: Private.currentAction,
+      currentIndex: Private.currentIndex,
+      currentSchedule: Private.currentSchedule,
+      toResume: Private.toResume,
+    }
   }
-  this.needsBackup = true
-  this.storeName = location.origin + '_atsrf'
-  this.actionables = []
-  this.schedules = []
-  this.results = []
-  this.events = {}
-  this.reloaded = false
+
+  static reset() {
+    Private.actionables = []
+    Private.results = []
+
+    Private.isPaused = false
+    Private.isWorking = false
+    Private.isWaiting = false
+
+    Private.current = null
+    Private.currentAction = null
+    Private.currentIndex = null
+    Private.currentSchedule = null
+    Private.toResume = null
+
+    Private.startLoopCount = 0
+  }
 }
 
-AutoSurf.prototype = {
-  __check: function(prop, index) {
-    if (this.actionables.length === index) {
-      this.actionables.push({
-        toDo: [],
-        toCheck: []
-      })
-    }
-
-    const obj = {
-      selector: null,
-      action: prop,
-      params: [],
-      description:
-        'Checking "' +
-        prop.action +
-        '" on [' +
-        (prop.action == 'isOn' || prop.action == 'isNotOn'
-          ? prop.params[0]
-          : prop.selector) +
-        ']'
-    }
-
-    Surfer.extend(obj, prop)
-    this.actionables[index].toCheck.push(obj)
-
-    return this
-  },
-  __checkNext: function(fresh) {
-    try {
-      this.currentAction = 'check'
-      if (fresh) {
-        this.currentIndex = 0
-      } else {
-        this.currentIndex++
-      }
-
-      if (
-        this.ready &&
-        !this.loading &&
-        this.actionables[this.currentSchedule]
-      ) {
-        if (this.actionables[this.currentSchedule].toCheck.length) {
-          const last = this.current || {}
-          this.current = this.actionables[this.currentSchedule].toCheck.shift()
-
-          if (this.current) {
-            this.__logCheck(this.current.description).__startWorking()
-            if (!this.current.selector) {
-              if (last.selector) {
-                this.current.selector = last.selector
-              } else {
-                this.__error(
-                  'Selector to CHECK <b>' +
-                    this.current.action +
-                    ' on</b> not specified'
-                )
-                this.__checkNext()
-                return
-              }
-            }
-
-            const current = Surf(this.current.selector)
-            if (!Array.isArray(this.current.selector)) {
-              current.focus()
-            }
-
-            current.__setContext(this)
-            let action = this.current.action
-
-            if (action.toLowerCase().indexOf('not') !== -1) {
-              action = action.replace(/not/i, '')
-            }
-
-            action = action[0].toLowerCase() + action.substring(1)
-            this.ready = false
-            this.__verify(
-              this.current.action,
-              current[action].apply(current, this.current.params)
-            )
-          }
-        } else {
-          if (!this.done) {
-            this.trigger('scheduleFinish', {
-              scheduleIndex: this.currentSchedule,
-              lastSchedule: this.actionables.length === this.currentSchedule + 1
-            })
-          }
-          this.done = true
-          this.nextSchedule()
-        }
-      } else {
-        this.to_resume = 2
-      }
-    } catch (e) {
-      this.__fail()
-      this.ready = true
-      this.__error(e.message)
-      this.__checkNext()
-    }
-  },
-  __do: function(prop, index) {
-    const obj = {
-      selector: null,
-      action: prop,
-      params: [],
-      description: null
-    }
-
-    Surfer.extend(obj, prop)
-
-    if (this.actionables.length == index) {
-      this.actionables.push({
-        toDo: [],
-        toCheck: []
-      })
-    }
-
-    this.actionables[index].toDo.push(obj)
-
-    return this
-  },
-  __done: function(failed) {
-    if (failed) {
-      this.__fail()
-    } else {
-      this.__success()
-    }
-
-    if (!this.paused && !this.done && !this.waiting) {
-      this.ready = true
-      this.loading = false
-      this.__doNext()
-    }
-
-    return this
-  },
-  __doNext: function(fresh) {
-    try {
-      this.currentAction = 'do'
-
-      if (fresh) {
-        this.currentIndex = 0
-      } else {
-        this.currentIndex++
-      }
-
-      if (
-        this.ready &&
-        !this.loading &&
-        this.actionables[this.currentSchedule]
-      ) {
-        this.trigger('resetLogs', { currentSchedule: this.currentSchedule })
-
-        if (this.actionables[this.currentSchedule].toDo.length) {
-          const last = this.current || {}
-          this.current = this.actionables[this.currentSchedule].toDo.shift()
-
-          if (this.current) {
-            if (!this.current.selector) {
-              if (last.selector) {
-                this.current.selector = last.selector
-              } else if (
-                this.current.action !== 'wait' &&
-                this.current.action !== 'pause' &&
-                this.current.action !== 'refresh' &&
-                this.current.action !== 'goto' &&
-                this.current.action !== 'waitTillPageLoads'
-              ) {
-                this.__error(
-                  'Selector to DO <b>' +
-                    this.current.action +
-                    ' on</b> not specified'
-                )
-                this.__doNext()
-                return
-              } else {
-                this.current.selector = []
-              }
-            }
-
-            if (this.reloaded) {
-              this.reloaded = false
-
-              if (this.current.action === 'waitTillPageLoads') {
-                return this.__doNext()
-              }
-            }
-
-            try {
-              this.__log(this.current.description).__startWorking()
-            } catch (e) {
-              console.error(e.message)
-            }
-
-            const current = Surf(this.current.selector)
-
-            if (!Array.isArray(this.current.selector)) {
-              current.focus()
-            }
-
-            current.__setContext(this)
-            current[this.current.action].apply(current, this.current.params)
-            this.ready = false
-          }
-        } else {
-          // nothing to do
-          this.__checkNext(true)
-        }
-      } else {
-        this.to_resume = 1
-      }
-    } catch (e) {
-      this.__error(e.message)
-      this.__doNext()
-    }
-  },
-  __error: function(msg) {
-    try {
-      this.__stopWorking()
-      if (msg) {
-        if (this.config.debug) {
-          console.error(msg)
-          console.warn('--> FAILED')
-        }
-      }
-      this.trigger('actionError', {
-        scheduleIndex: this.currentSchedule,
-        actionIndex: this.currentIndex,
-        action: this.currentAction,
-        lastSchedule: this.actionables.length === this.currentSchedule + 1,
-        message: msg
-      })
-    } catch (e) {}
-
-    return this
-  },
-  __fail: function() {
-    try {
-      this.__stopWorking()
-      if (this.config.debug) {
-        console.warn('--> FAILED')
-      }
-
-      // save to result
-
-      if (this.results.length <= this.currentSchedule) {
-        this.results.push({
-          title: this.schedules[this.currentSchedule].title,
-          list: [],
-          passed: 0,
-          failed: 0
-        })
-      }
-      this.results[this.currentSchedule]['failed']++
-      this.results[this.currentSchedule]['list'].push({
-        action: this.currentAction,
-        description: this.current.description,
-        status: false
-      })
-
-      // trigger failed
-
-      this.trigger('actionFailed', {
-        scheduleIndex: this.currentSchedule,
-        actionIndex: this.currentIndex,
-        action: this.currentAction,
-        lastSchedule: this.actionables.length === this.currentSchedule + 1
-      })
-    } catch (e) {}
-
-    return this
-  },
-  __goto: function(url, message) {
-    if (!url) {
-      return this.__done(true)
-    }
-
-    if (this.currentSchedule === undefined) {
-      // only load page is started
-      setTimeout(
-        function() {
-          this.__goto(url, message)
-        }.bind(this),
-        1000
-      )
-    } else {
-      if (message !== false) {
-        this.__log(message || 'Open page [' + url + ']').__startWorking()
-      }
-
-      this.url = url
-      this.ready = false
-      this.loading = true
-
-      this.backup()
-      location.href = url
-    }
-
-    return this
-  },
-  __log: function(message, allDone = false) {
-    if (message) {
-      if (this.config.debug) {
-        !allDone
-          ? console.debug('DO :: ' + message)
-          : console.debug(message.toUpperCase())
-      }
-
-      this.trigger('log', {
-        allDone,
-        message,
-        scheduleIndex: this.currentSchedule,
-        actionIndex: this.currentIndex,
-        action: this.currentAction,
-        lastSchedule: this.actionables.length === this.currentSchedule + 1
-      })
-    }
-
-    return this
-  },
-  __logCheck: function(message) {
-    if (message) {
-      if (this.config.debug) {
-        console.debug('CHECK :: ' + message)
-      }
-
-      this.trigger('log', {
-        message,
-        scheduleIndex: this.currentSchedule,
-        actionIndex: this.currentIndex,
-        action: this.currentAction,
-        lastSchedule: this.actionables.length === this.currentSchedule + 1
-      })
-    }
-
-    return this
-  },
-  __parseSchedules: function() {
-    Surfer.each(
-      this.schedules,
-      function(schedule, i) {
-        this.trigger('scheduleInit', {
-          schedule,
-          id: `_${i}`
-        })
-
-        Surfer.each(
-          schedule.do,
-          function(toDo) {
-            if (schedule.url) {
-              toDo['url'] = schedule.url
-            }
-
-            this.__do(toDo, i)
-          }.bind(this)
-        )
-
-        Surfer.each(
-          schedule.check,
-          function(toCheck) {
-            this.__check(toCheck, i)
-          }.bind(this)
-        )
-      }.bind(this)
-    )
-
-    this.loading = false
-
-    return this
-  },
-  __startWorking: function() {
-    if (this.working) {
-      return this
-    }
-
-    this.trigger('workStart', {
-      scheduleIndex: this.currentSchedule,
-      actionIndex: this.currentIndex,
-      action: this.currentAction,
-      lastSchedule: this.actionables.length === this.currentSchedule + 1
-    })
-    this.__working()
-    this.lvlInt = setInterval(
-      function() {
-        this.__working()
-      }.bind(this),
-      100
-    )
-
-    return this
-  },
-  __stopWorking: function() {
-    clearInterval(this.lvlInt)
-    this.working = false
-    this.trigger('workStop', {
-      scheduleIndex: this.currentSchedule,
-      actionIndex: this.currentIndex,
-      action: this.currentAction,
-      lastSchedule: this.actionables.length === this.currentSchedule + 1
-    })
-
-    return this
-  },
-  __success: function() {
-    try {
-      this.__stopWorking()
-      if (this.config.debug) {
-        console.log('--> SUCCESS')
-      }
-
-      // save to result
-
-      if (this.results.length <= this.currentSchedule) {
-        this.results.push({
-          title: this.schedules[this.currentSchedule].title,
-          list: [],
-          passed: 0,
-          failed: 0
-        })
-      }
-
-      this.results[this.currentSchedule]['passed']++
-      this.results[this.currentSchedule]['list'].push({
-        action: this.currentAction,
-        description: this.current.description,
-        status: true
-      })
-
-      // trigger success
-
-      this.trigger('actionSuccess', {
-        scheduleIndex: this.currentSchedule,
-        actionIndex: this.currentIndex,
-        action: this.currentAction,
-        lastSchedule: this.actionables.length === this.currentSchedule + 1
-      })
-    } catch (e) {}
-
-    return this
-  },
-  __verify: function(action, bool) {
-    try {
-      if (action.toLowerCase().indexOf('not') !== -1) {
-        // must not be true
-        if (bool) {
-          this.__fail()
-        } else {
-          this.__success()
-        }
-      } else {
-        // must be true
-        if (bool) {
-          this.__success()
-        } else {
-          this.__fail()
-        }
-      }
-    } catch (e) {
-      this.__fail()
-      this.__error(e.message)
-    }
-    this.ready = true
-    this.__checkNext()
-
-    return this
-  },
-  __waiting: function(status) {
-    this.waiting = status !== undefined ? status : true
-
-    return this
-  },
-  __working: function() {
-    this.wk = this.wk || 0
-    const lvls = ['.', '..', '...', '....']
-
-    this.trigger('working', { text: lvls[this.wk] })
-    this.wk++
-
-    if (this.wk > 3) {
-      this.wk = 0
-    }
-
-    this.working = true
-
-    return this
-  },
+export default class AutoSurf {
   /**
-   * Backs up the application data. Should be called before the page reloads
+   * @param {object} config The options. Keys include:
+   * autoAdvance (boolean): Indicates whether to automatically advance to the next step or not. Defaults to TRUE
+   * defaultFailMessage (string): The default message for failed actions. It may be overridden by a more specific message, if available.
+   * typingSpeed (integer): The speed to type at. Defaults to 500
+   * @param {BaseAdapter} Adapter A subclass of BaseAdapter
    */
-  backup: function() {
-    if (this.needsBackup) {
-      localStorage.setItem(this.storeName, JSON.stringify(this))
-    }
-    return this
-  },
-  /** Checks the result of everything done
-   * @param {object} prop  Keys include:
-   *
-   * selector (string) - The element to check e.g. input#firstName, div#nav >
-   * ul li:last-child
-   * action (string) - The check to execute. This may be any of:
-   * 	- isOn - Checks if the page's location IS the given parameter,
-   * 	- IsNotOn - Checks if the page's location IS NOT the given parameter,
-   * 	- valueIs - Checks the value of the given selector IS the given parameter,
-   * 	- ValueIsNot - Checks the value of the given selector IS NOT the given parameter,
-   * 	- valueContains - Checks the value of the given selector CONTAINS the given
-   * 	parameter,
-   * 	- notValueContains - Checks the value of the given selector DOES NOT CONTAIN the
-   * 	given parameter,
-   * 	- textIs - Checks if the text of the given selector IS the given parameter
-   * 	- TextIsNot - Checks if the text of the given selector IS NOT the given parameter
-   * 	- containsText - Checks the text of the given selector CONTAINS the given
-   * 	parameter
-   * 	- notContainsText - Checks the text of the given selector DOES NOT CONTAIN the
-   * 	 given parameter
-   * 	- attrIs - Checks if the given attribute of the given selector IS the given
-   * 	 parameter
-   * 	- AttrIsNot - Checks if the given attribute of the given selector IS NOT the given
-   * 	 parameter
-   * 	- containsAttr - Checks the given attribute of the given selector CONTAINS the
-   * 	given parameter
-   * 	- notContainsAttr - Checks the given attribute of the given selector DOES NOT
-   * 	CONTAIN the given parameter
-   * 	- exists - Check if the given selector EXISTS on the page
-   * 	- notExists - Check if the given selector EXISTS on the page
-   * params (array) -  Parameters for the given action
-   * description (string) - To be logged while checking the given action
-   *
-   * @return {AutoSurf}
-   */
-  check: function(prop) {
-    if (this.from_file) {
-      if (this.config.debug) {
-        console.error('FILE MODE ACTIVE')
-      }
-      return this
+  constructor(config = {}, Adapter) {
+    this.version = '1.0.0'
+
+    if (!Adapter) {
+      Adapter = WebSurf
+    } else if (typeof Adapter !== 'function') {
+      throw new Error('Adapter must be a class')
+    } else if (!(new Adapter() instanceof BaseAdapter)) {
+      throw new Error('Adapter must be a subclass of BaseAdapter')
     }
 
-    return this.__check(prop, 0)
-  },
+    Private.Surf = Adapter
+
+    Private.config = {
+      ...Private.config,
+      ...config,
+    }
+  }
+
   /**
-   * Clears any backed up application data
+   * Fetches data that needs to be backed up
    */
-  clearBackup: function() {
-    localStorage.removeItem(this.storeName)
-    return this
-  },
-  /** Executes the given action
-   * @param {object} prop Keys include:
-   *
-   * selector (string) - The element to check e.g. input#firstName, div#nav >
-   * ul li:last-child
-   * action (string) - The action to execute. This may include:
-   *  - wait - Waits for the given MILISECONDS before continuing to the next action
-   *  - focus - Focuses on the given selector
-   *  - click - Clicks on the given selector
-   *  - type - Types the given TEXT in the given selector
-   *  - goBack - Navigates to previous page
-   *  - submitForm - Submits the given form selector without clicking on the
-   *  submit button
-   * params (array) - Parameters for the given action
-   * description (string) - To be logged while executing the given action
-   *
-   * @return {AutoSurf}
-   */
-  do: function(prop) {
-    if (this.from_file && arguments.length < 2) {
-      if (this.config.debug) {
-        console.error('FILE MODE ACTIVE')
-      }
-      return this
-    }
+  getBackupData() {
+    return new Private()
+  }
 
-    return this.__do(prop, 0)
-  },
   /**
-   * Fetches the current url being worked on
-   * @returns {string}
-   */
-  getCurrentUrl: function() {
-    return location.href
-  },
-  /**
-   * Checks if there's a next schedule after the current one
-   * @returns {boolean}
-   */
-  hasNext: function() {
-    return this.actionables[this.currentSchedule + 1] !== undefined
-  },
-  /**
-   * Executes the next schedule
-   * @returns {AutoSurf}
-   */
-  nextSchedule: function() {
-    if (!this.done) {
-      if (this.config.debug) {
-        console.warn(
-          'Cannot execute next schedule until current schedule ends.'
-        )
-      }
-      return this
-    }
-
-    if (this.currentSchedule > -1) {
-      this.__success()
-    }
-
-    if (!this.hasNext()) {
-      if (this.current !== null) {
-        this.current = null
-        this.ready = false
-        this.done = true
-        this.__log(
-          'All ' + (this.currentSchedule + 1) + ' schedules completed.',
-          true
-        ).__stopWorking()
-
-        // trigger done
-        this.needsBackup = false
-        this.trigger('done', this.results)
-      }
-
-      return this
-    }
-
-    this.needsBackup = true
-    setTimeout(
-      () => {
-        this.currentSchedule++
-        this.ready = true
-        this.done = false
-
-        this.trigger('scheduleStart', {
-          scheduleIndex: this.currentSchedule,
-          lastSchedule: this.actionables.length === this.currentSchedule + 1
-        })
-        this.__doNext(true)
-      },
-      this.nextSchedule > -1 ? this.config.delayBetweenSchedules : 0
-    )
-
-    return this
-  },
-  /**
-   *
-   * @param {string} event paused | resumed | work.start | work.stop | schedule.start |
-   * schedule.finish | action.success | action.failed | action.error | done
+   * @param {string} event paused | resumed | scheduleStart | scheduleInit |
+   * scheduleFinish | actionStart | actionSuccess | actionFailed | actionError | done
    * @param {function} callback
    * @returns {AutoSurf}
    */
-  on: function(event, callback) {
+  on(event, callback) {
     if (event === '*') {
-      ;[
-        'actionError',
-        'actionFailed',
-        'actionSuccess',
-        'done',
-        'log',
-        'paused',
-        'resetLogs',
-        'resumed',
-        'scheduleFinish',
-        'scheduleInit',
-        'scheduleStart',
-        'working',
-        'workStart',
-        'workStop'
-      ].map(
-        function(evt) {
-          this.events[evt] = callback
-        }.bind(this)
-      )
+      Private.allEvents.forEach((evt) => (Private.events[evt] = callback))
     } else {
-      event.split(',').map(
-        function(evt) {
-          this.events[evt.trim()] = callback
-        }.bind(this)
-      )
+      event.split(',').forEach((evt) => (Private.events[evt.trim()] = callback))
     }
 
     return this
-  },
-  parseFeature: function(obj) {
-    if (obj === undefined || typeof obj !== 'object') {
-      console.error('Surf.parseObject() requires an object parameter')
-      return this
+  }
+
+  schedules(schedules) {
+    if (!Array.isArray(schedules)) {
+      throw new Error('Schedules must be an array')
     }
 
-    this.schedules = obj.schedules
-    this.__parseSchedules()
+    Private.schedules = schedules
+    this.#parseSchedules()
 
     return this
-  },
+  }
+
   /**
    * Pauses the execution of the schedules
    * @returns {AutoSurf}
    */
-  pause: function() {
-    if (this.paused) {
+  pause() {
+    if (Private.isPaused) {
       return this
     }
 
-    this.ready = false
-    this.paused = true
+    Private.isReady = false
+    Private.isPaused = true
 
-    if (this.config.debug) {
-      console.debug('SCHEDULE :: PAUSE')
-    }
-
-    this.trigger('paused', {
-      scheduleIndex: this.currentSchedule,
-      actionIndex: this.currentIndex,
-      action: this.currentAction,
-      lastSchedule: this.actionables.length === this.currentSchedule + 1
-    })
+    this.#triggerPause()
 
     return this
-  },
+  }
+
+  /**
+   * Called to clean up AutoSurfing
+   */
+  quit() {
+    Private.Surf.quit()
+
+    return this
+  }
+
   /**
    * Called to inform AutoSurf that parent code is ready
-   *
-   * @param {*} beforeCallback
-   * @param {*} afterCallback
+   * @param {function} callback The function to call when everything is ready
    */
-  ready: function(beforeCallback, afterCallback) {
-    let stored = localStorage.getItem(this.storeName)
+  ready(callback = () => {}) {
+    this.#initAdapter(callback)
 
-    if (stored) {
-      stored = JSON.parse(stored)
-
-      for (let key in stored) {
-        this[key] = stored[key]
-      }
-
-      localStorage.removeItem(this.storeName)
-
-      if (this.config.debug) {
-        console.info('URL -> ' + this.getCurrentUrl())
-      }
-
-      if (typeof beforeCallback === 'function') {
-        beforeCallback(true)
-      }
-
-      this.reloaded = true
-      this.__waiting(false)
-      this.__done()
-    } else if (typeof beforeCallback === 'function') {
-      beforeCallback(false)
-    }
-
-    if (typeof afterCallback === 'function') {
-      afterCallback(stored !== null)
-    }
+    Private.canStart = true
 
     return this
-  },
+  }
+
+  /**
+   * Reconfigures the surfer
+   * @param {object} config Keys include:
+   * autoAdvance (boolean): Indicates whether to automatically advance to the next step or not. Defaults to TRUE
+   * defaultFailMessage (string): The default message for failed actions. It may be overridden by a more specific message, if available.
+   * typingSpeed (integer): The speed to type at. Defaults to 500
+   */
+  reconfigure(config) {
+    Private.config = { ...Private.config, ...config }
+
+    return this
+  }
+
   /**
    * Restarts execution
    * @returns {AutoSurf}
    */
-  restart: function() {
-    if (this.loading) {
-      Surf('img#working', true).removeClass('hidden')
-      Surf('#toggle_pause', true).removeClass('hidden')
-      setTimeout(
-        function() {
-          this.restart()
-        }.bind(this),
-        1000
-      )
+  restart() {
+    if (Private.isLoading) {
+      setTimeout(() => this.restart(), 1000)
     }
-    console.clear()
-    Surf('#schedules', true).html('')
-    Surf('#project>.logs', true).html('')
-    this.__parseSchedules()
-    this.currentSchedule = -1
-    Surf('td#frame', true).addClass('on')
-    this.done = true
-    this.results = []
-    this.nextSchedule()
 
-    return this
-  },
+    Private.reset()
+
+    Private.Surf.quit()
+    Private.Surf.init(this)
+
+    this.#parseSchedules(true)
+
+    return this.start()
+  }
+
   /**
    * Resumes the execution of the schedules
    * @returns {AutoSurf}
    */
-  resume: function() {
-    if (!this.paused) {
+  resume() {
+    if (!Private.isPaused) {
       return this
     }
 
-    this.ready = true
-    this.paused = false
-
-    if (this.to_resume === 2) {
-      this.__checkNext()
-    } else {
-      this.__doNext()
-    }
-
-    if (this.config.debug) {
-      console.debug('SCHEDULE :: RESUME')
-    }
-
-    this.trigger('resumed', {
-      scheduleIndex: this.currentSchedule,
-      actionIndex: this.currentIndex,
-      action: this.currentAction,
-      lastSchedule: this.actionables.length === this.currentSchedule + 1
+    this.#trigger('resumed', {
+      scheduleIndex: Private.currentSchedule,
+      actionIndex: Private.currentIndex,
+      action: Private.currentAction,
+      on: Private.current,
     })
 
+    Private.isReady = true
+    Private.isPaused = false
+
+    if (this.#scheduleIsEmpty()) {
+      this.#nextSchedule()
+    } else if (Private.toResume === 2) {
+      this.#checkNext()
+    } else {
+      this.#doNext()
+    }
+
     return this
-  },
-  /** Initiates execution
+  }
+
+  /**
+   * Initiates execution
    * @param {object} config Keys include:
-   * debug (bool) - Indicates whether to output messages
-   * delayBetweenSchedules (int): The millisecond delay between schedules
+   * autoAdvance (boolean): Indicates whether to automatically advance to the next step or not. Defaults to TRUE
+   * defaultFailMessage (string): The default message for failed actions. It may be overridden by a more specific message, if available.
+   * typingSpeed (integer): The speed to type at. Defaults to 500
    * @return {AutoSurf}
    */
-  start: function(config = {}) {
+  start(config = {}) {
+    if (!Private.canStart) {
+      throw new Error('You have to call ready first')
+    }
+
     // Don't continue until loading is done
-    if (this.loading) {
-      setTimeout(
-        function() {
-          this.start(config, false)
-        }.bind(this),
-        1000
-      )
+    if (Private.isLoading || !Private.schedules.length) {
+      if (Private.startLoopCount < 10) {
+        Private.startLoopCount++
+
+        setTimeout(() => this.start(config, false), 1000)
+      }
 
       return this
     }
 
-    this.currentSchedule = -1
-    this.done = true
-    this.config = { ...this.config, ...config }
+    Private.currentSchedule = -1
+    Private.isDone = true
+    Private.config = { ...Private.config, ...config }
 
-    this.nextSchedule()
+    this.#nextSchedule()
 
     return this
-  },
-  /**
-   * Triggers the given event
-   * @param {string} event
-   * @param {Object} detail The object to pass as parameter to the callback
-   * @returns {AutoSurf}
-   */
-  trigger: function(event, detail) {
+  }
+
+  #checkNext(fresh) {
     try {
-      this.events[event]({
+      Private.currentAction = 'check'
+      Private.toResume = 2
+
+      if (fresh) {
+        Private.currentIndex = 0
+      } else {
+        Private.currentIndex++
+      }
+
+      if (
+        Private.isReady &&
+        !Private.isLoading &&
+        Private.actionables[Private.currentSchedule]
+      ) {
+        if (Private.actionables[Private.currentSchedule].toCheck.length) {
+          Private.current = Private.actionables[
+            Private.currentSchedule
+          ].toCheck.shift()
+
+          if (Private.current) {
+            this.#startWorking()
+
+            const { action, params, selector } = Private.current
+
+            let _action = action
+
+            if (action.toLowerCase().indexOf('not') !== -1) {
+              _action = action.replace(/not/i, '')
+            }
+
+            Private.isReady = false
+            this.#handle(_action, params, selector, (status, message) =>
+              this.#verify(action, status, message)
+            )
+          }
+        } else {
+          this.#finishSchedule()
+        }
+      }
+    } catch (e) {
+      Private.isReady = true
+      this.#fail(e.message)
+
+      if (Private.config.autoAdvance) {
+        this.#checkNext()
+      } else {
+        this.pause()
+      }
+    }
+  }
+
+  #done() {
+    if (Private.current !== null) {
+      Private.current = null
+      Private.isReady = false
+      Private.isDone = true
+
+      this.#stopWorking()
+
+      // trigger done
+      Private.Surf.quit(this)
+      this.#trigger('done', Private.results)
+    }
+  }
+
+  #doNext(fresh) {
+    try {
+      Private.currentAction = 'do'
+      Private.toResume = 1
+
+      if (fresh) {
+        Private.currentIndex = 0
+      } else {
+        Private.currentIndex++
+      }
+
+      if (
+        Private.isReady &&
+        !Private.isLoading &&
+        Private.actionables[Private.currentSchedule]
+      ) {
+        if (Private.actionables[Private.currentSchedule].toDo.length) {
+          Private.current = Private.actionables[
+            Private.currentSchedule
+          ].toDo.shift()
+
+          if (Private.current) {
+            const { action, params = [], selector } = Private.current
+
+            Private.isReady = false
+
+            if (action === 'type' && params.length < 3) {
+              params.push(Private.config.typingSpeed)
+            }
+
+            this.#handle(action, params, selector, (status, message) =>
+              this.#handled(status, message)
+            )
+          }
+        } else {
+          // nothing to do
+          this.#checkNext(true)
+        }
+      }
+    } catch (e) {
+      this.#fail(e.message)
+
+      if (Private.config.autoAdvance) {
+        this.#doNext()
+      } else {
+        this.pause()
+      }
+    }
+  }
+
+  #fail(message) {
+    try {
+      this.#stopWorking()
+
+      // save to result
+
+      if (Private.results.length <= Private.currentSchedule) {
+        Private.results.push({
+          title: Private.schedules[Private.currentSchedule].title,
+          list: [],
+          passed: 0,
+          failed: 0,
+        })
+      }
+
+      Private.results[Private.currentSchedule]['failed']++
+      Private.results[Private.currentSchedule]['list'].push({
+        action: Private.currentAction,
+        index: this.currentIndex,
+        description: Private.current.description,
+        is_succes: false,
+      })
+
+      // trigger failed
+
+      this.#trigger('actionFailed', {
+        scheduleIndex: Private.currentSchedule,
+        actionIndex: Private.currentIndex,
+        action: Private.currentAction,
+        on: Private.current,
+        message: message || Private.config.defaultFailMessage,
+      })
+
+      this.#triggerPause()
+    } catch (e) {}
+
+    return this
+  }
+
+  #finishSchedule() {
+    if (this.#scheduleIsEmpty()) {
+      if (!Private.isDone) {
+        this.#trigger('scheduleFinish', {
+          scheduleIndex: Private.currentSchedule,
+        })
+      }
+
+      Private.isDone = true
+
+      if (!this.#hasNext()) {
+        this.#done()
+      } else if (Private.config.autoAdvance) {
+        this.#nextSchedule()
+      } else {
+        this.pause()
+      }
+    }
+  }
+
+  #handle(action, params, selector, callback) {
+    const ucase = (str) => str.replace(/^[a-z]/i, (chr) => chr.toUpperCase())
+    const method = `${Private.currentAction}${ucase(action)}`
+
+    this.#startWorking()
+
+    if (Private.customHandlers[method]) {
+      Private.customHandlers[method].call(this, callback, selector, params)
+    } else {
+      const resetCallbacks = () => {
+        Private.Surf.setSuccessCallback(() => {})
+        Private.Surf.setErrorCallback(() => {})
+      }
+
+      try {
+        if (selector) {
+          params.unshift(selector)
+        }
+
+        Private.Surf.setSuccessCallback(() => {
+          resetCallbacks()
+          callback(Private.STATUS_SUCCESS)
+        })
+
+        Private.Surf.setErrorCallback(message => {
+          resetCallbacks()
+          callback(Private.STATUS_ERROR, message)
+        })
+
+        Private.Surf[method](...params)
+      } catch (e) {
+        resetCallbacks()
+        callback(
+          Private.STATUS_ERROR,
+          e.message.replace(
+            "Failed to execute 'querySelectorAll' on 'Document': ", ''
+          )
+        )
+      }
+    }
+  }
+
+  #handled(status, errorMessage) {
+    if (status === Private.STATUS_SUCCESS) {
+      this.#success()
+    } else {
+      this.#fail(errorMessage)
+    }
+
+    if (!Private.isPaused && !Private.isDone && !Private.isWaiting) {
+      Private.isReady = true
+      Private.isLoading = false
+
+      if (Private.config.autoAdvance) {
+        this.#doNext()
+      } else {
+        if (this.#scheduleIsEmpty()) {
+          this.#finishSchedule()
+        } else {
+          this.pause()
+        }
+      }
+    }
+
+    return this
+  }
+
+  #hasNext() {
+    return Private.actionables[Private.currentSchedule + 1] !== undefined
+  }
+
+  #initAdapter(callback) {
+    Private.Surf.init(this, (fromStore) => {
+      if (fromStore) {
+        const allowedKeys = Object.keys(new Private().toJSON())
+
+        for (let key in fromStore) {
+          if (!allowedKeys.includes(key)) {
+            return
+          }
+
+          Private[key] = fromStore[key]
+        }
+      }
+
+      if (Private.isWorking) {
+        this.#handled(Private.STATUS_SUCCESS)
+      }
+
+      callback(!!fromStore)
+    })
+  }
+
+  #nextSchedule() {
+    if (!Private.isDone) {
+      return this
+    }
+
+    if (!this.#hasNext()) {
+      this.#done()
+
+      return this
+    }
+
+    Private.currentSchedule++
+    Private.isReady = true
+    Private.isDone = false
+
+    this.#trigger('scheduleStart', {
+      scheduleIndex: Private.currentSchedule,
+    })
+
+    this.#doNext(true)
+
+    return this
+  }
+
+  #parseSchedules(restarting = false) {
+    Private.isLoading = true
+
+    Private.schedules.forEach((schedule, i) => {
+      schedule.do.forEach((toDo) => {
+        if (schedule.url) {
+          toDo['url'] = schedule.url
+        }
+
+        this.#runDo(toDo, i)
+      })
+
+      schedule.check.forEach((toCheck) => this.#runCheck(toCheck, i))
+
+      if (!restarting) {
+        this.#trigger('scheduleInit', {
+          schedule,
+          scheduleIndex: i,
+        })
+      }
+    })
+
+    Private.isLoading = false
+
+    return this
+  }
+
+  #runCheck(prop, index) {
+    if (Private.actionables.length === index) {
+      Private.actionables.push({
+        toDo: [],
+        toCheck: [],
+      })
+    }
+
+    const obj = {
+      selector: null,
+      action: prop,
+      params: [],
+      description: `Checking "${prop.action}" on [${
+        prop.action == 'isOn' || prop.action == 'isNotOn'
+          ? prop.params[0]
+          : prop.selector
+      }]`,
+      ...prop,
+    }
+
+    Private.actionables[index].toCheck.push(obj)
+
+    return this
+  }
+
+  #runDo(prop, index) {
+    const obj = {
+      selector: null,
+      action: prop,
+      params: [],
+      description: null,
+      ...prop,
+    }
+
+    if (Private.actionables.length === index) {
+      Private.actionables.push({
+        toDo: [],
+        toCheck: [],
+      })
+    }
+
+    Private.actionables[index].toDo.push(obj)
+
+    return this
+  }
+
+  #scheduleIsEmpty() {
+    return (
+      !Private.actionables[Private.currentSchedule] ||
+      (!Private.actionables[Private.currentSchedule].toDo.length &&
+        !Private.actionables[Private.currentSchedule].toCheck.length)
+    )
+  }
+
+  #startWorking() {
+    if (Private.isWorking) {
+      return this
+    }
+
+    this.#trigger('actionStart', {
+      scheduleIndex: Private.currentSchedule,
+      actionIndex: Private.currentIndex,
+      action: Private.currentAction,
+      on: Private.current,
+    })
+
+    Private.isWorking = true
+
+    return this
+  }
+
+  #stopWorking() {
+    Private.isWorking = false
+
+    return this
+  }
+
+  #success() {
+    try {
+      this.#stopWorking()
+
+      // save to result
+      if (Private.results.length <= Private.currentSchedule) {
+        Private.results.push({
+          title: Private.schedules[Private.currentSchedule].title,
+          list: [],
+          passed: 0,
+          failed: 0,
+        })
+      }
+
+      Private.results[Private.currentSchedule]['passed']++
+      Private.results[Private.currentSchedule]['list'].push({
+        action: Private.currentAction,
+        index: this.currentIndex,
+        description: Private.current.description,
+        is_success: true,
+      })
+
+      // trigger success
+
+      this.#trigger('actionSuccess', {
+        scheduleIndex: Private.currentSchedule,
+        actionIndex: Private.currentIndex,
+        action: Private.currentAction,
+        on: Private.current,
+      })
+
+      this.#triggerPause()
+    } catch (e) {}
+
+    return this
+  }
+
+  #trigger(event, detail) {
+    try {
+      let schedule
+
+      if (detail.schedule) {
+        schedule = detail.schedule
+        delete detail.schedule
+      } else if (detail.scheduleIndex) {
+        schedule = Private.schedules[detail.scheduleIndex]
+      } else if (Private.currentSchedule > -1) {
+        schedule = Private.schedules[Private.currentSchedule]
+      }
+
+      Private.events[event]({
         name: event,
-        schedule: this.schedules[this.currentSchedule],
-        detail
+        schedule,
+        detail,
       })
     } catch (e) {}
 
     return this
   }
+
+  #triggerPause() {
+    if (!Private.isPaused || Private.isWorking) {
+      return
+    }
+
+    this.#trigger('paused', {
+      scheduleIndex: Private.currentSchedule,
+      actionIndex: Private.currentIndex,
+      action: Private.currentAction,
+      on: Private.current,
+    })
+  }
+
+  #verify(action, status, errorMessage) {
+    try {
+      if (action.toLowerCase().indexOf('not') !== -1) {
+        // must not be true
+        if (status === Private.STATUS_SUCCESS) {
+          this.#fail(errorMessage)
+        } else {
+          this.#success()
+        }
+      } else {
+        // must be true
+        if (status === Private.STATUS_SUCCESS) {
+          this.#success()
+        } else {
+          this.#fail(errorMessage)
+        }
+      }
+    } catch (e) {
+      this.#fail(e.message)
+    }
+
+    Private.isReady = true
+
+    if (Private.config.autoAdvance) {
+      this.#checkNext()
+    } else {
+      if (this.#scheduleIsEmpty()) {
+        this.#finishSchedule()
+      } else {
+        this.pause()
+      }
+    }
+
+    return this
+  }
+
+  #waiting(status) {
+    Private.isWaiting = status !== undefined ? status : true
+
+    return this
+  }
 }
-
-const Surfer = Surf.prototype
-
-export default new AutoSurf()

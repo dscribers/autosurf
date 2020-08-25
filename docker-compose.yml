@@ -1,0 +1,10 @@
+# for local development
+version: "3.7"
+services:
+  auto-surf:
+    build:
+      context: .
+      target: "develop-stage"
+    volumes:
+      - ".:/app"
+    tty: true

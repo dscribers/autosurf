@@ -157,6 +157,7 @@ checkAttrContains | (string) selector, (string) attribute, (string) text | Calle
 checkAttrIs | (string) selector, (string) attribute, (string) text | Called to check if an element's attribute is the same as the given text
 checkExists | (string) selector | Called to check if an element exists on the page
 checkIsOn | (string) url | Called to check if the page is on the given url
+checkElementIs | (string) selector, (string) display | Called to check if an element is either visible or hidden
 checkTextContains | (string) selector, (string) text | Called to check if the element's text contains the given text
 checkTextIs | (string) selector, (string) text | Called to check if element's text is matches the given text
 checkValueContains | (string) selector, (string) text | Called to check if the element's value contains the given text

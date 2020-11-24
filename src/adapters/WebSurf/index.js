@@ -47,6 +47,31 @@ export default class WebSurf extends BaseAdapter {
   }
 
   /**
+   * Checks if an element is visible or hidden
+   *
+   * @param {string} selector The selector of the target html element
+   * @param {string} display visible | hidden
+   */
+  static checkElementIs (selector, display) {
+    this.#focus(selector)
+
+    display = display === 'visible'
+
+    let valid = false
+    const item = new Surfer(selector).item
+
+    if (item) {
+      if (display) {
+        valid = item.style.display !== 'hidden'
+      } else {
+        valid = item.style.display === 'hidden'
+      }
+    }
+
+    this.#checked(valid)
+  }
+
+  /**
    * @inheritdoc
    */
   static checkTextContains(selector, text) {

@@ -13,7 +13,7 @@ export default class Surfer {
    *
    * @returns {HTMLElement|undefined}
    */
-  get item() {
+  get item () {
     return this.#items[0]
   }
 
@@ -22,14 +22,14 @@ export default class Surfer {
    *
    * @returs {integer}
    */
-  get length() {
+  get length () {
     return this.#items.length
   }
 
   /**
    * The first item that matches the selector or an empty object
    */
-  get #itemy() {
+  get #itemy () {
     return this.item || {}
   }
 
@@ -38,7 +38,7 @@ export default class Surfer {
    * @param {any} selector
    * @returns {Surfer}
    */
-  static select(selector) {
+  static select (selector) {
     return new Surfer(selector)
   }
 
@@ -46,7 +46,7 @@ export default class Surfer {
    * @param {string} str The class string to add
    * @return {Surfer}
    */
-  addClass(str) {
+  addClass (str) {
     if (this.#itemy && str) {
       this.each((item) => {
         str.split(' ').forEach((_str) => item.classList.add(str))
@@ -61,16 +61,18 @@ export default class Surfer {
    * @param {string} content The content to append
    * @return {Surfer}
    */
-  append(content) {
+  append (content) {
     return this.each((item) => (item.innerHTML += content))
   }
 
-  /** Sets or gets the given attribute of the current item
+  /**
+   * Sets or gets the given attribute of the current item
+   *
    * @param {string} attr The attribute to set or get
    * @param {mixed} val If given, it would be set as the value of the attribute
    * @return {string|Surfer}
    */
-  attr(attr, val) {
+  attr (attr, val) {
     if (val === undefined) {
       return this.#itemy[attr]
     }
@@ -78,7 +80,12 @@ export default class Surfer {
     return this.each((item) => (item[attr] = val))
   }
 
-  click() {
+  /**
+   * Calls click on the item
+   *
+   * @returns {Surfer}
+   */
+  click () {
     return this.each((item) =>
       item.dispatchEvent(
         new MouseEvent('click', {
@@ -95,7 +102,7 @@ export default class Surfer {
    * @param {type} selector
    * @returns {HTMLElement|undefined}
    */
-  closest(selector) {
+  closest (selector) {
     if (this.item) {
       return this.item.closest(selector)
     }
@@ -107,7 +114,7 @@ export default class Surfer {
    *
    * @return {Surfer}
    */
-  each(func) {
+  each (func) {
     this.#items.forEach(func)
 
     return this
@@ -117,7 +124,7 @@ export default class Surfer {
    * @param {string} selector The element to find
    * @return {Surfer} object of the item found
    */
-  find(selector) {
+  find (selector) {
     return this.selector
       ? Surfer.select(this.selector + ' ' + selector)
       : Surfer.select(selector)
@@ -128,7 +135,7 @@ export default class Surfer {
    *
    * @returns {Surfer}
    */
-  focus() {
+  focus () {
     return this.each((item) => item.focus())
   }
 
@@ -137,7 +144,7 @@ export default class Surfer {
    * @param {string} str
    * @returns {boolean}
    */
-  hasClass(str) {
+  hasClass (str) {
     if (!this.item) {
       return false
     }
@@ -157,7 +164,7 @@ export default class Surfer {
    * @param {string} str If given, it would be set as the element's html content
    * @return {string|Surfer}
    */
-  html(content) {
+  html (content) {
     if (content === undefined) {
       return this.#itemy.innerHTML || ''
     }
@@ -172,8 +179,8 @@ export default class Surfer {
    * @param {scope} string The element to scope event to
    * @returns {Surfer}
    */
-  on(event, func, scope) {
-    ;((scope && document.querySelector(scope)) || document).addEventListener(
+  on (event, func, scope) {
+    ; ((scope && document.querySelector(scope)) || document).addEventListener(
       event,
       (e) => {
         const listeningTarget = e.target.closest(this.selector)
@@ -191,9 +198,9 @@ export default class Surfer {
    * @param {function} func The function to call
    * @return {Surfer}
    */
-  onload(func) {
+  onload (func) {
     return this.each((item) => {
-      const onload = item.onload || (() => {})
+      const onload = item.onload || (() => { })
 
       item.onload = () => {
         onload.call(item)
@@ -206,7 +213,7 @@ export default class Surfer {
    * @param {string} content The content to prepend
    * @return {Surfer}
    */
-  prepend(content) {
+  prepend (content) {
     return this.each((item) => (item.innerHTML = content + item.innerHTML))
   }
 
@@ -214,7 +221,7 @@ export default class Surfer {
    * @param {function} func The function to call
    * @return {Surfer}
    */
-  ready(func) {
+  ready (func) {
     if (this.#readyFired) {
       setTimeout(() => func.call(this), 1)
 
@@ -253,7 +260,7 @@ export default class Surfer {
    * Removes the current item from the DOM
    * @returns {Surfer}
    */
-  remove() {
+  remove () {
     return this.each((item) => item.remove())
   }
 
@@ -261,7 +268,7 @@ export default class Surfer {
    * @param {string} str The class string to remove
    * @return {Surfer}
    */
-  removeClass(str) {
+  removeClass (str) {
     if (str && this.#itemy.className) {
       this.each((item) => {
         str.split(' ').forEach((_str) => item.classList.remove(_str))
@@ -275,7 +282,7 @@ export default class Surfer {
    * @param {string} str If given, it would be set as the element's text content
    * @return {string|Surfer}
    */
-  text(str) {
+  text (str) {
     if (str === undefined) {
       return this.#itemy.innerText || ''
     }
@@ -288,7 +295,7 @@ export default class Surfer {
    * @param {string} str
    * @returns {Surfer}
    */
-  toggleClass(str) {
+  toggleClass (str) {
     this.each((item) => {
       const $item = new Surfer(item)
 
@@ -306,7 +313,7 @@ export default class Surfer {
    * @param {string} value If given, it would be set as the value
    * @return {Surfer}
    */
-  value(value) {
+  value (value) {
     if (value === undefined) {
       return this.#itemy.value
     }
@@ -314,7 +321,7 @@ export default class Surfer {
     return this.each((item) => (item.value = value))
   }
 
-  #elem(selector) {
+  #elem (selector) {
     if (typeof selector === 'object') {
       if (selector.nodeName) {
         if (selector.localName) {
@@ -339,7 +346,7 @@ export default class Surfer {
     return this
   }
 
-  #fireReady() {
+  #fireReady () {
     if (!this.#readyFired) {
       this.#readyFired = true
 

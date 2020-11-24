@@ -46,6 +46,16 @@ export default class BaseAdapter {
   }
 
   /**
+   * Checks if an element is visible or hidden
+   *
+   * @param {string} selector The selector of the target html element
+   * @param {string} display visible | hidden
+   */
+  static checkElementIs (selector, display) {
+    this.#defaultResponse()
+  }
+
+  /**
    * Checks if the page is on the given url
    *
    * @param {*} selector The selector of the target html element

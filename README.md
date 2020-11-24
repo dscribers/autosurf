@@ -1,12 +1,22 @@
 # autosurf
 
-## Usage
+## Installation
 
 ### Include on page to test
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/@dscribers/autosurf/dist/autosurf.min.js"></script>
+```
 
+### Use nodejs
+
+```bash
+yarn add @dscribers/autosurf
+```
+
+## Usage
+
+```html
 <script>
   const $surf = new AutoSurf()
   $surf
@@ -16,24 +26,6 @@
       $surf.schedules(schedulesArray).start()
     })
 </script>
-```
-
-### Use nodejs
-
-```bash
-yarn add @dscribers/autosurf
-```
-
-```js
-import AutoSurf from '@dscribers/autosurf'
-
-const $surf = new AutoSurf()
-$surf
-  .on('*', handleAllEvents)
-  // This function directly passed to the init method of the adapter
-  .ready(() => {
-    $surf.schedules(schedulesArray).start()
-  })
 ```
 
 ### Config

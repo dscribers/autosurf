@@ -1,6 +1,6 @@
 {
   "name": "@dscribers/autosurf",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Automactically surf webpages from Gherkin config files",
   "rollup": {
     "autosurf": {

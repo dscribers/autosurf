@@ -154,6 +154,15 @@ export default class BaseAdapter {
   }
 
   /**
+   * Sets the value of the dropdown select
+   * @param {string} selector The select of the target html element
+   * @param {any} value The value of the select field
+   */
+  static doSelect (selector, value) {
+    this.#defaultResponse()
+  }
+
+  /**
    * Submits the form (self or closest parent) without clicking on the submit button
    *
    * @param {*} selector The selector of the target html element

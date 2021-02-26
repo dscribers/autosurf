@@ -148,6 +148,21 @@ export default class WebSurf extends BaseAdapter {
   /**
    * @inheritdoc
    */
+  static doSelect (selector, value) {
+    if (selector) {
+      this.#focus(selector)
+
+      const item = new Surfer(selector)
+
+      item.value(value)
+    } else {
+      this.#done(false, 'Selector not provided')
+    }
+  }
+
+  /**
+   * @inheritdoc
+   */
   static doSubmitForm(selector) {
     if (selector) {
       this.#focus(selector)

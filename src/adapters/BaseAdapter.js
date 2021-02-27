@@ -183,6 +183,6 @@ export default class BaseAdapter {
   }
 
   static #defaultResponse() {
-    throw new Error()
+    throw new Error('Not implemented')
   }
 }

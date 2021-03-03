@@ -1,3 +1,7 @@
+import { RobulaPlus } from './robula-plus'
+
+const { getElementByXPath } = new RobulaPlus()
+
 export default class Surfer {
   #items = []
   #readyEventHandlersInstalled = false
@@ -5,7 +9,11 @@ export default class Surfer {
   #readyList = []
 
   constructor(selector) {
-    this.#elem(selector)
+    try {
+      this.#elem(getElementByXPath(selector, document))
+    } catch (e) {
+      this.#elem(selector)
+    }
   }
 
   /**

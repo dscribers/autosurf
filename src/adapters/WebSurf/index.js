@@ -342,28 +342,28 @@ export default class WebSurf extends BaseAdapter {
    * @param {*} selector The selector of the target html element
    */
   static #focus(selector) {
-    if (selector) {
-      const item = new Surfer(selector).item
-
-      const focusData = {
-        backgroundColor: item.style.backgroundColor,
-        border: item.style.border,
-        color: item.style.color,
-      }
-
-      this.#blur = () => {
-        for (let key in focusData) {
-          item.style[key] = focusData[key]
-        }
-      }
-
-      item.style.border = '2px solid magenta'
-      item.style.color = '#0e90d2'
-      item.style.backgroundColor = '#ffffff'
-      item.focus()
-    } else {
+    if (!selector) {
       throw new Error('Selector not provided')
     }
+
+    const item = new Surfer(selector).item
+
+    const focusData = {
+      backgroundColor: item.style.backgroundColor,
+      border: item.style.border,
+      color: item.style.color,
+    }
+
+    this.#blur = () => {
+      for (let key in focusData) {
+        item.style[key] = focusData[key]
+      }
+    }
+
+    item.style.border = '2px solid magenta'
+    item.style.color = '#0e90d2'
+    item.style.backgroundColor = '#ffffff'
+    item.focus()
   }
 
   static #needsBackup(status) {

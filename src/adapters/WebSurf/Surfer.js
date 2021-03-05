@@ -8,11 +8,21 @@ export default class Surfer {
   #readyFired = false
   #readyList = []
 
-  constructor(selector) {
+
+  /**
+   * @param {any} selector
+   * @param {object} base
+   * @returns {Surfer}
+   */
+  constructor(selector, base) {
+    if (base && typeof base !== 'object') {
+      throw new Error('Second parameter must be an object')
+    }
+
     try {
-      this.#elem(getElementByXPath(selector, document))
+      this.#elem(getElementByXPath(selector, base || document))
     } catch (e) {
-      this.#elem(selector)
+      this.#elem(selector, base || document)
     }
   }
 
@@ -44,10 +54,11 @@ export default class Surfer {
   /**
    * Selects an element
    * @param {any} selector
+   * @param {object} base
    * @returns {Surfer}
    */
-  static select (selector) {
-    return new Surfer(selector)
+  static select (selector, base) {
+    return new Surfer(selector, base)
   }
 
   /** Adds the given string to the class of the current item
@@ -133,9 +144,15 @@ export default class Surfer {
    * @return {Surfer} object of the item found
    */
   find (selector) {
-    return this.selector
-      ? Surfer.select(this.selector + ' ' + selector)
-      : Surfer.select(selector)
+    if (this.#items.length) {
+      let items = []
+
+      this.#items.forEach(item => (items = [...items, item.querySelectorAll(selector)]))
+
+      return Surfer.select(items)
+    }
+
+    return Surfer.select(selector)
   }
 
   /**
@@ -188,16 +205,26 @@ export default class Surfer {
    * @returns {Surfer}
    */
   on (event, func, scope) {
-    ; ((scope && document.querySelector(scope)) || document).addEventListener(
-      event,
-      (e) => {
-        const listeningTarget = e.target.closest(this.selector)
+    let scopes = []
 
-        if (listeningTarget) {
-          func.call(listeningTarget, e)
+    if (!scope || !document.querySelector(scope)) {
+      scopes = [document]
+    } else {
+      scopes = document.querySelectorAll(scope)
+    }
+
+    scopes.forEach(scope => {
+      scope.addEventListener(
+        event,
+        (e) => {
+          const listeningTarget = e.target.closest(this.selector)
+
+          if (listeningTarget) {
+            func.call(listeningTarget, e)
+          }
         }
-      }
-    )
+      )
+    })
 
     return this
   }
@@ -329,26 +356,47 @@ export default class Surfer {
     return this.each((item) => (item.value = value))
   }
 
-  #elem (selector) {
-    if (typeof selector === 'object') {
-      if (selector.nodeName) {
-        if (selector.localName) {
-          this.selector = selector.localName
-        }
+  #createSelector (item) {
+    let selector = ''
 
-        if (selector.id) {
-          this.selector += '#' + selector.id
-        }
-
-        if (selector.className) {
-          this.selector += '.' + selector.className
-        }
+    if (item.nodeName) {
+      if (item.localName) {
+        selector = item.localName
       }
 
+      if (item.id) {
+        selector += '#' + item.id
+      } else if (item.name) {
+        selector += `[name="${item.name}"]`
+      } else {
+        Array.from(item.attributes)
+          .forEach(attr => {
+            if (attr.localName === 'class') {
+              return
+            }
+
+            selector += `[${attr.localName}="${attr.value}"]`
+          })
+        if (item.className) {
+          selector += '.' + item.className.split(' ').filter(cls => !!cls).join('.')
+        }
+      }
+    }
+
+    return selector
+  }
+
+  #elem (selector, base) {
+    if (typeof selector === 'object' && !Array.isArray(selector)) {
+      if (selector instanceof Surfer) {
+        return Surfer
+      }
+
+      this.selector = this.#createSelector(selector)
       this.#items = [selector]
     } else if (typeof selector === 'string') {
       this.selector = selector
-      this.#items = document.querySelectorAll(selector)
+      this.#items = base.querySelectorAll(selector)
     }
 
     return this

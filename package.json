@@ -1,6 +1,6 @@
 {
   "name": "@dscribers/autosurf",
-  "version": "1.5.1",
+  "version": "2.0.0",
   "description": "Automactically surf webpages from Gherkin config files",
   "rollup": {
     "autosurf": {
@@ -12,16 +12,6 @@
       "main": "dist/base-adapter.js",
       "module": "dist/base-adapter.es.js",
       "browser": "dist/base-adapter.min.js"
-    },
-    "websurf": {
-      "main": "dist/websurf.js",
-      "module": "dist/websurf.es.js",
-      "browser": "dist/websurf.min.js"
-    },
-    "websurfer": {
-      "main": "dist/websurfer.js",
-      "module": "dist/websurfer.es.js",
-      "browser": "dist/websurfer.min.js"
     }
   },
   "repository": "https://github.com/dscribers/autosurf",

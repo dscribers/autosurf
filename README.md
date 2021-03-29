@@ -102,14 +102,18 @@ scheduleStart | Triggered when starting to execute a schedule
 
 ## Adapters
 
-AutoSurf can work with different adapters to surf different devices and platforms. By default, AutoSurf uses the in-built WebSurf adapter but a custom adapter can be used.
+AutoSurf works with adapters to surf different devices and platforms. This is required.
+
+Below is a list of available adapters:
+
+- [WebSurf](https://github.com/dscribers/websurf-adapter)
 
 ### How to build
 
 Adapters are classes which must extend the BaseAdapter class.
 
 ```js
-import BaseAdapter from '@dscribers/autosurf/dist/baseadapter'
+import BaseAdapter from '@dscribers/autosurf/dist/base-adapter'
 
 export default class MobileAdapter extends BaseAdapter {
   static init($autosurf, callback) {

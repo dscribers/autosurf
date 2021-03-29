@@ -1,5 +1,4 @@
-import BaseAdapter from './adapters/BaseAdapter'
-import WebSurf from './adapters/WebSurf'
+import BaseAdapter from './BaseAdapter'
 
 class Private {
   static STATUS_SUCCESS = true
@@ -102,9 +101,7 @@ export default class AutoSurf {
   constructor(config = {}, Adapter) {
     this.version = '1.0.0'
 
-    if (!Adapter) {
-      Adapter = WebSurf
-    } else if (typeof Adapter !== 'function') {
+    if (typeof Adapter !== 'function') {
       throw new Error('Adapter must be a class')
     } else if (!(new Adapter() instanceof BaseAdapter)) {
       throw new Error('Adapter must be a subclass of BaseAdapter')

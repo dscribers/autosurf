@@ -13,3 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - WebSurf adapter. Moved to standalone project (https://github.com/dscribers/websurf-adapter)
+
+## [2.0.1] - 2021-03-29
+
+### Changed
+
+- Makes the adapter the first parameter of AutoSurf

@@ -98,7 +98,7 @@ export default class AutoSurf {
    * typingSpeed (integer): The speed to type at. Defaults to 500
    * @param {BaseAdapter} Adapter A subclass of BaseAdapter
    */
-  constructor(config = {}, Adapter) {
+  constructor(Adapter, config = {}) {
     this.version = '1.0.0'
 
     if (typeof Adapter !== 'function') {

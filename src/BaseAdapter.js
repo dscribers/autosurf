@@ -5,14 +5,14 @@ export default class BaseAdapter {
    * @param {object} $autosurf An instance of AutoSurf
    * @param {function} callback The function to call. Receives boolean param which indicates whether the page was reloaded or not.
    */
-  static init($autosurf, callback = () => {}) {}
+  init($autosurf, callback = () => {}) {}
 
   /**
    * Called when AutoSurf finishes all executions
    *
    * @param {object} $autosurf An instance of AutoSurf
    */
-  static quit($autosurf) {}
+  quit($autosurf) {}
 
   /**
    * Checks that the given attribute of the current item contains the given text
@@ -21,7 +21,7 @@ export default class BaseAdapter {
    * @param {string} attri The attribute to check
    * @param {string} text The text to check against
    */
-  static checkAttrContains(selector, attr, text) {
+  checkAttrContains(selector, attr, text) {
     this.#defaultResponse()
   }
 
@@ -32,7 +32,7 @@ export default class BaseAdapter {
    * @param {string} attr The attribute to check
    * @param {string} val The value to check against
    */
-  static checkAttrIs(selector, attr, val) {
+  checkAttrIs(selector, attr, val) {
     this.#defaultResponse()
   }
 
@@ -41,7 +41,7 @@ export default class BaseAdapter {
    *
    * @param {*} selector The selector of the target html element
    */
-  static checkExists(selector) {
+  checkExists(selector) {
     this.#defaultResponse()
   }
 
@@ -51,7 +51,7 @@ export default class BaseAdapter {
    * @param {string} selector The selector of the target html element
    * @param {string} display visible | hidden
    */
-  static checkElementIs (selector, display) {
+  checkElementIs (selector, display) {
     this.#defaultResponse()
   }
 
@@ -61,7 +61,7 @@ export default class BaseAdapter {
    * @param {*} selector The selector of the target html element
    * @param {string} url The url string to check against
    */
-  static checkIsOn(selector, url) {
+  checkIsOn(selector, url) {
     this.#defaultResponse()
   }
 
@@ -71,7 +71,7 @@ export default class BaseAdapter {
    * @param {*} selector The selector of the target html element
    * @param {string} text The text to check against
    */
-  static checkTextContains(selector, text) {
+  checkTextContains(selector, text) {
     this.#defaultResponse()
   }
 
@@ -81,7 +81,7 @@ export default class BaseAdapter {
    * @param {*} selector The selector of the target html element
    * @param {string} text The text to check against
    */
-  static checkTextIs(selector, text) {
+  checkTextIs(selector, text) {
     this.#defaultResponse()
   }
 
@@ -91,7 +91,7 @@ export default class BaseAdapter {
    * @param {*} selector The selector of the target html element
    * @param {string} text The text to check against
    */
-  static checkValueContains(selector, text) {
+  checkValueContains(selector, text) {
     this.#defaultResponse()
   }
 
@@ -101,7 +101,7 @@ export default class BaseAdapter {
    * @param {*} selector The selector of the target html element
    * @param {string} value The value to check against
    */
-  static checkValueIs(selector, value) {
+  checkValueIs(selector, value) {
     this.#defaultResponse()
   }
 
@@ -110,14 +110,14 @@ export default class BaseAdapter {
    *
    * @param {*} selector The selector of the target html element
    */
-  static doClick(selector) {
+  doClick(selector) {
     this.#defaultResponse()
   }
 
   /**
    * Navigates the browser back to the previous page
    */
-  static doGoBack() {
+  doGoBack() {
     this.#defaultResponse()
   }
 
@@ -126,14 +126,14 @@ export default class BaseAdapter {
    *
    * @param {int} milliseconds
    */
-  static doWait(milliseconds) {
+  doWait(milliseconds) {
     this.#defaultResponse()
   }
 
   /**
    * Pauses execution until the page reloads
    */
-  static doWaitTillPageLoads() {
+  doWaitTillPageLoads() {
     this.#defaultResponse()
   }
 
@@ -142,14 +142,14 @@ export default class BaseAdapter {
    *
    * @param {string} url
    */
-  static doGoto(url) {
+  doGoto(url) {
     this.#defaultResponse()
   }
 
   /**
    * Refreshes the current page
    */
-  static doRefresh() {
+  doRefresh() {
     this.#defaultResponse()
   }
 
@@ -158,7 +158,7 @@ export default class BaseAdapter {
    * @param {string} selector The select of the target html element
    * @param {any} value The value of the select field
    */
-  static doSelect (selector, value) {
+  doSelect (selector, value) {
     this.#defaultResponse()
   }
 
@@ -167,7 +167,7 @@ export default class BaseAdapter {
    *
    * @param {*} selector The selector of the target html element
    */
-  static doSubmitForm(selector) {
+  doSubmitForm(selector) {
     this.#defaultResponse()
   }
 
@@ -178,11 +178,11 @@ export default class BaseAdapter {
    * @param {string} str The string to type
    * @param {integer} speed The speed at which to type
    */
-  static doType(selector, str, speed = 500) {
+  doType(selector, str, speed = 500) {
     this.#defaultResponse()
   }
 
-  static #defaultResponse() {
+  #defaultResponse() {
     throw new Error('Not implemented')
   }
 }

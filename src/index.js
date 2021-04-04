@@ -9,7 +9,7 @@ class Private {
   static config = {
     autoAdvance: true,
     defaultFailMessage: '',
-    typingSpeed: 500,
+    typingSpeed: 500
   }
 
   static actionables = []
@@ -50,7 +50,7 @@ class Private {
   /**
    * @inheritdoc
    */
-  toJSON() {
+  toJSON () {
     return {
       actionables: Private.actionables,
       config: Private.config,
@@ -72,7 +72,7 @@ class Private {
     }
   }
 
-  static reset() {
+  static reset () {
     Private.actionables = []
     Private.results = []
 
@@ -96,18 +96,10 @@ export default class AutoSurf {
    * autoAdvance (boolean): Indicates whether to automatically advance to the next step or not. Defaults to TRUE
    * defaultFailMessage (string): The default message for failed actions. It may be overridden by a more specific message, if available.
    * typingSpeed (integer): The speed to type at. Defaults to 500
-   * @param {BaseAdapter} Adapter A subclass of BaseAdapter
+   * @param {BaseAdapter} adapter A subclass of BaseAdapter
    */
-  constructor(Adapter, config = {}) {
-    this.version = '1.0.0'
-
-    if (typeof Adapter !== 'function') {
-      throw new Error('Adapter must be a class')
-    } else if (!(new Adapter() instanceof BaseAdapter)) {
-      throw new Error('Adapter must be a subclass of BaseAdapter')
-    }
-
-    Private.Surf = Adapter
+  constructor(adapter, config = {}) {
+    Private.Surf = adapter
 
     Private.config = {
       ...Private.config,
@@ -118,7 +110,7 @@ export default class AutoSurf {
   /**
    * Fetches data that needs to be backed up
    */
-  getBackupData() {
+  getBackupData () {
     return new Private()
   }
 
@@ -128,7 +120,7 @@ export default class AutoSurf {
    * @param {function} callback
    * @returns {AutoSurf}
    */
-  on(event, callback) {
+  on (event, callback) {
     if (event === '*') {
       Private.allEvents.forEach((evt) => (Private.events[evt] = callback))
     } else {
@@ -138,7 +130,7 @@ export default class AutoSurf {
     return this
   }
 
-  schedules(schedules) {
+  schedules (schedules) {
     if (!Array.isArray(schedules)) {
       throw new Error('Schedules must be an array')
     }
@@ -153,7 +145,7 @@ export default class AutoSurf {
    * Pauses the execution of the schedules
    * @returns {AutoSurf}
    */
-  pause() {
+  pause () {
     if (Private.isPaused) {
       return this
     }
@@ -169,7 +161,7 @@ export default class AutoSurf {
   /**
    * Called to clean up AutoSurfing
    */
-  quit() {
+  quit () {
     Private.Surf.quit()
 
     return this
@@ -179,7 +171,7 @@ export default class AutoSurf {
    * Called to inform AutoSurf that parent code is ready
    * @param {function} callback The function to call when everything is ready
    */
-  ready(callback = () => {}) {
+  ready (callback = () => { }) {
     this.#initAdapter(callback)
 
     Private.canStart = true
@@ -194,7 +186,7 @@ export default class AutoSurf {
    * defaultFailMessage (string): The default message for failed actions. It may be overridden by a more specific message, if available.
    * typingSpeed (integer): The speed to type at. Defaults to 500
    */
-  reconfigure(config) {
+  reconfigure (config) {
     Private.config = { ...Private.config, ...config }
 
     return this
@@ -204,7 +196,7 @@ export default class AutoSurf {
    * Restarts execution
    * @returns {AutoSurf}
    */
-  restart() {
+  restart () {
     if (Private.isLoading) {
       setTimeout(() => this.restart(), 1000)
     }
@@ -223,7 +215,7 @@ export default class AutoSurf {
    * Resumes the execution of the schedules
    * @returns {AutoSurf}
    */
-  resume() {
+  resume () {
     if (!Private.isPaused) {
       return this
     }
@@ -257,7 +249,7 @@ export default class AutoSurf {
    * typingSpeed (integer): The speed to type at. Defaults to 500
    * @return {AutoSurf}
    */
-  start(config = {}) {
+  start (config = {}) {
     if (!Private.canStart) {
       throw new Error('You have to call ready first')
     }
@@ -282,7 +274,7 @@ export default class AutoSurf {
     return this
   }
 
-  #checkNext(fresh) {
+  #checkNext (fresh) {
     try {
       Private.currentAction = 'check'
       Private.toResume = 2
@@ -335,7 +327,7 @@ export default class AutoSurf {
     }
   }
 
-  #done() {
+  #done () {
     if (Private.current !== null) {
       Private.current = null
       Private.isReady = false
@@ -349,7 +341,7 @@ export default class AutoSurf {
     }
   }
 
-  #doNext(fresh) {
+  #doNext (fresh) {
     try {
       Private.currentAction = 'do'
       Private.toResume = 1
@@ -399,7 +391,7 @@ export default class AutoSurf {
     }
   }
 
-  #fail(message) {
+  #fail (message) {
     try {
       this.#stopWorking()
 
@@ -433,12 +425,12 @@ export default class AutoSurf {
       })
 
       this.#triggerPause()
-    } catch (e) {}
+    } catch (e) { }
 
     return this
   }
 
-  #finishSchedule() {
+  #finishSchedule () {
     if (this.#scheduleIsEmpty()) {
       if (!Private.isDone) {
         this.#trigger('scheduleFinish', {
@@ -458,7 +450,7 @@ export default class AutoSurf {
     }
   }
 
-  #handle(action, params, selector, callback) {
+  #handle (action, params, selector, callback) {
     const ucase = (str) => str.replace(/^[a-z]/i, (chr) => chr.toUpperCase())
     const method = `${Private.currentAction}${ucase(action)}`
 
@@ -468,8 +460,8 @@ export default class AutoSurf {
       Private.customHandlers[method].call(this, callback, selector, params)
     } else {
       const resetCallbacks = () => {
-        Private.Surf.setSuccessCallback(() => {})
-        Private.Surf.setErrorCallback(() => {})
+        Private.Surf.setSuccessCallback(() => { })
+        Private.Surf.setErrorCallback(() => { })
       }
 
       try {
@@ -500,7 +492,7 @@ export default class AutoSurf {
     }
   }
 
-  #handled(status, errorMessage) {
+  #handled (status, errorMessage) {
     if (status === Private.STATUS_SUCCESS) {
       this.#success()
     } else {
@@ -525,18 +517,18 @@ export default class AutoSurf {
     return this
   }
 
-  #hasNext() {
+  #hasNext () {
     return Private.actionables[Private.currentSchedule + 1] !== undefined
   }
 
-  #initAdapter(callback) {
-    Private.Surf.init(this, (fromStore) => {
+  #initAdapter (callback = () => { }) {
+    Private.Surf.init(this, fromStore => {
       if (fromStore) {
         const allowedKeys = Object.keys(new Private().toJSON())
 
         for (let key in fromStore) {
           if (!allowedKeys.includes(key)) {
-            return
+            break
           }
 
           Private[key] = fromStore[key]
@@ -551,7 +543,7 @@ export default class AutoSurf {
     })
   }
 
-  #nextSchedule() {
+  #nextSchedule () {
     if (!Private.isDone) {
       return this
     }
@@ -575,19 +567,22 @@ export default class AutoSurf {
     return this
   }
 
-  #parseSchedules(restarting = false) {
+  #parseSchedules (restarting = false) {
     Private.isLoading = true
 
     Private.schedules.forEach((schedule, i) => {
-      schedule.do.forEach((toDo) => {
+      const dos = schedule.do || []
+      const checks = schedule.check || []
+
+      dos.forEach((toDo) => {
         if (schedule.url) {
           toDo['url'] = schedule.url
         }
 
-        this.#runDo(toDo, i)
+        this.#prepDo(toDo, i)
       })
 
-      schedule.check.forEach((toCheck) => this.#runCheck(toCheck, i))
+      checks.forEach((toCheck) => this.#prepCheck(toCheck, i))
 
       if (!restarting) {
         this.#trigger('scheduleInit', {
@@ -602,7 +597,7 @@ export default class AutoSurf {
     return this
   }
 
-  #runCheck(prop, index) {
+  #prepCheck (prop, index) {
     if (Private.actionables.length === index) {
       Private.actionables.push({
         toDo: [],
@@ -614,11 +609,10 @@ export default class AutoSurf {
       selector: null,
       action: prop,
       params: [],
-      description: `Checking "${prop.action}" on [${
-        prop.action == 'isOn' || prop.action == 'isNotOn'
-          ? prop.params[0]
-          : prop.selector
-      }]`,
+      description: `Checking "${prop.action}" on [${prop.action == 'isOn' || prop.action == 'isNotOn'
+        ? prop.params[0]
+        : prop.selector
+        }]`,
       ...prop,
     }
 
@@ -627,7 +621,7 @@ export default class AutoSurf {
     return this
   }
 
-  #runDo(prop, index) {
+  #prepDo (prop, index) {
     const obj = {
       selector: null,
       action: prop,
@@ -648,7 +642,7 @@ export default class AutoSurf {
     return this
   }
 
-  #scheduleIsEmpty() {
+  #scheduleIsEmpty () {
     return (
       !Private.actionables[Private.currentSchedule] ||
       (!Private.actionables[Private.currentSchedule].toDo.length &&
@@ -656,7 +650,7 @@ export default class AutoSurf {
     )
   }
 
-  #startWorking() {
+  #startWorking () {
     if (Private.isWorking) {
       return this
     }
@@ -673,13 +667,13 @@ export default class AutoSurf {
     return this
   }
 
-  #stopWorking() {
+  #stopWorking () {
     Private.isWorking = false
 
     return this
   }
 
-  #success() {
+  #success () {
     try {
       this.#stopWorking()
 
@@ -711,12 +705,12 @@ export default class AutoSurf {
       })
 
       this.#triggerPause()
-    } catch (e) {}
+    } catch (e) { }
 
     return this
   }
 
-  #trigger(event, detail) {
+  #trigger (event, detail) {
     try {
       let schedule
 
@@ -734,12 +728,12 @@ export default class AutoSurf {
         schedule,
         detail,
       })
-    } catch (e) {}
+    } catch (e) { }
 
     return this
   }
 
-  #triggerPause() {
+  #triggerPause () {
     if (!Private.isPaused || Private.isWorking) {
       return
     }
@@ -752,7 +746,7 @@ export default class AutoSurf {
     })
   }
 
-  #verify(action, status, errorMessage) {
+  #verify (action, status, errorMessage) {
     try {
       if (action.toLowerCase().indexOf('not') !== -1) {
         // must not be true
@@ -788,7 +782,7 @@ export default class AutoSurf {
     return this
   }
 
-  #waiting(status) {
+  #waiting (status) {
     Private.isWaiting = status !== undefined ? status : true
 
     return this

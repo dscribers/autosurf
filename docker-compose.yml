@@ -2,6 +2,7 @@
 version: "3.7"
 services:
   auto-surf:
+    image: dscribe/auto-surf
     build:
       context: .
       target: "develop-stage"

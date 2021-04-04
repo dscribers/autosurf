@@ -146,7 +146,7 @@ export default class MobileAdapter extends BaseAdapter {
 import AutoSurf from '@dscribers/autosurf'
 import MobileSurf from 'mobile-surf-adapter'
 
-$autosurf = new AutoSurf(config, MobileSurf)
+$autosurf = new AutoSurf(new MobileSurf())
 ```
 
 ### Methods

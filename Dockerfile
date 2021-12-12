@@ -1,8 +1,20 @@
-# develop stage
-FROM node:14.3-alpine as develop-stage
-RUN apk --no-cache add curl
+# base
+FROM node:16.3-alpine as base
+
+RUN apk update && apk add zip unzip libzip-dev git
+
+RUN apk add --no-cache python2
+
 WORKDIR /app
-COPY package.json ./
-COPY yarn.lock ./
+
+# build
+FROM base as build
+
+COPY --chown=1000:1000 package.json ./
+COPY --chown=1000:1000 yarn.lock ./
+
 RUN yarn
-COPY . .
+
+COPY --chown=1000:1000 . .
+
+RUN yarn build

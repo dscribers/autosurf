@@ -66,6 +66,16 @@ export default class BaseAdapter {
   }
 
   /**
+   * Checks if the page contains the given text anywhere
+   *
+   * @param {*} selector The selector of the target html element
+   * @param {string} text The text to check
+   */
+  checkPageContains (selector, text) {
+    return this.#defaultResponse()
+  }
+
+  /**
    * Checks that the text content of the current item contains the given text
    *
    * @param {*} selector The selector of the target html element

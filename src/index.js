@@ -53,10 +53,12 @@ class Private {
   toJSON () {
     return {
       actionables: Private.actionables,
-      config: Private.config,
-      schedules: Private.schedules,
-      results: Private.results,
       canStart: Private.canStart,
+      config: Private.config,
+      current: Private.current,
+      currentAction: Private.currentAction,
+      currentIndex: Private.currentIndex,
+      currentSchedule: Private.currentSchedule,
       isDone: Private.isDone,
       isInitialized: Private.isInitialized,
       isLoading: Private.isLoading,
@@ -64,10 +66,8 @@ class Private {
       isReady: Private.isReady,
       isWaiting: Private.isWaiting,
       isWorking: Private.isWorking,
-      current: Private.current,
-      currentAction: Private.currentAction,
-      currentIndex: Private.currentIndex,
-      currentSchedule: Private.currentSchedule,
+      results: Private.results,
+      schedules: Private.schedules,
       toResume: Private.toResume,
     }
   }
@@ -98,7 +98,7 @@ export default class AutoSurf {
    * typingSpeed (integer): The speed to type at. Defaults to 500
    * @param {BaseAdapter} adapter A subclass of BaseAdapter
    */
-  constructor(adapter, config = {}) {
+  constructor (adapter, config = {}) {
     Private.Surf = adapter
 
     Private.config = {
@@ -126,17 +126,6 @@ export default class AutoSurf {
     } else {
       event.split(',').forEach((evt) => (Private.events[evt.trim()] = callback))
     }
-
-    return this
-  }
-
-  schedules (schedules) {
-    if (!Array.isArray(schedules)) {
-      throw new Error('Schedules must be an array')
-    }
-
-    Private.schedules = schedules
-    this.#parseSchedules()
 
     return this
   }
@@ -237,6 +226,22 @@ export default class AutoSurf {
     } else {
       this.#doNext()
     }
+
+    return this
+  }
+
+  /**
+   * Sets the schedules
+   * @param {array} schedules
+   * @returns {AutoSurf}
+   */
+  schedules (schedules) {
+    if (!Array.isArray(schedules)) {
+      throw new Error('Schedules must be an array')
+    }
+
+    Private.schedules = schedules
+    this.#parseSchedules()
 
     return this
   }

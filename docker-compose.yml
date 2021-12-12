@@ -2,11 +2,12 @@
 version: "3.7"
 services:
   auto-surf:
-    image: dscribe/auto-surf
+    image: dscribe/basic-node
     build:
       context: .
-      target: "develop-stage"
+      target: base
     volumes:
-      - ".:/app"
+      - .:/app
+    user: 1000:1000
     tty: true
-    command: yarn
+    stdin_open: true

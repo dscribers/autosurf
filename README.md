@@ -1,4 +1,4 @@
-# autosurf
+# autosurf [DEPRECATED]
 
 ## Installation
 

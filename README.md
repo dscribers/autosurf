@@ -1,5 +1,7 @@
 # autosurf [DEPRECATED]
 
+> The package is no longer maintained.
+
 ## Installation
 
 ### Include on page to test
